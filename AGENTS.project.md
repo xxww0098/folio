@@ -61,6 +61,7 @@ public/obsidian-folio/   Obsidian 插件（manifest / main.js / styles.css）
 | `mcp` | Agent 远程管理：Streamable HTTP JSON-RPC，复用 PAT |
 | `theme` | 内置皮肤（地球 / 极夜 / 墨迹 / 终端 / 稿纸 / 雾面） |
 | `roles` | author / editor / admin |
+| `entrance` | 后台入口。Docker 首次启动 `scripts/ensure-entrance.mjs` 生成路径并打印到终端；空=关；`/$entry` 种 cookie |
 
 - 读：公开 `createServerFn({ method: "GET" })`，不要挂 `authMiddleware`。
 - 写：必须 `.middleware([authMiddleware])`，用 `context.userId`，禁止客户端传来的 user id。Obsidian / MCP 的 HTTP 路由走 PAT（`folio_`），用 `requireApiUserId`，不要在公开 URL 上挂写操作。
@@ -170,6 +171,7 @@ npm run check:auth
 | Obsidian 同步 | `src/lib/obsidian/` + `/api/obsidian/*`（PAT `folio_`）；插件源文件在 `public/obsidian-folio/`，zip 由客户端打包 |
 | Agent MCP | `src/lib/mcp/` + `/api/mcp`（Streamable HTTP，同一 PAT）；说明页 `/mcp`；新工具加在 `catalog.ts` 并在 `ops.ts` 实现 |
 | Docker / Release | `Dockerfile` + `docker-compose.yml`；版本来自 GitHub Release（`v*` tag → GHCR + Release）；升级跑 `scripts/update-from-release.sh` |
+| 后台入口 | `src/lib/entrance/` + `migrations/0008_entrance.sql`；Docker 首次启动 `scripts/ensure-entrance.mjs` 生成并打印到终端；空字符串关闭；`/$entry` 解锁并写 `folio_entrance`；公开页、`/login`、MCP / Obsidian PAT 不拦 |
 | 新皮肤 | `catalog.ts` 加一项 + `styles.css` 写 light/dark 两套 token；预览色只放 catalog swatch |
 
 做完对照：公开页仍可未登录浏览；作者只能改自己的稿；代码块有语言标签且可复制。

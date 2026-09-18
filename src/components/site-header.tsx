@@ -42,11 +42,12 @@ export function SiteHeader({ posts }: { posts: PostListItem[] }) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "inline-flex h-11 shrink-0 items-center px-2.5 text-sm transition-colors duration-150",
+                  "folio-nav-link inline-flex h-11 shrink-0 items-center px-2.5 text-sm transition-[color] duration-150",
                   active
                     ? "font-medium text-header-foreground"
                     : "text-header-foreground/70 hover:text-header-foreground",
                 )}
+                data-active={active ? "true" : undefined}
               >
                 {item.label}
               </Link>

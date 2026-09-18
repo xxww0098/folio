@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { FileText, FolderOpen, MessageCircle, Sparkles } from "lucide-react";
+import { FileText, FolderOpen, MessageCircle } from "lucide-react";
 import { TOPICS, type PostListItem, type RecentComment, type TagRef } from "@/lib/blog/types";
 import { formatZhDate } from "@/lib/format";
 
@@ -33,9 +33,7 @@ export function SiteSidebar({
             折
           </span>
           <h2 className="mt-3 text-base font-semibold">折页</h2>
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            写给工程师的独立博客。类型系统、并发、数据库与工具链。
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">类型系统、并发、数据库。</p>
         </div>
         <div className="mt-5 grid grid-cols-3 divide-x divide-border border-t border-border pt-4">
           <Stat icon={FileText} label="文章" value={posts.length} />
@@ -45,18 +43,13 @@ export function SiteSidebar({
       </section>
 
       <section className="overflow-hidden rounded-xl bg-header p-5 text-header-foreground shadow-md">
-        <p className="flex items-center gap-2 text-sm font-medium text-primary">
-          <Sparkles className="size-4" />
-          会员抢先
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-header-foreground/75">
-          新文会员立刻读，到期自动公开。订阅后不限次数。
-        </p>
+        <p className="text-sm font-medium text-primary">会员抢先</p>
+        <p className="mt-2 text-sm text-header-foreground/75">新文立刻读全文。</p>
         <Link
           to="/membership"
-          className="mt-4 inline-flex h-11 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
+          className="mt-4 inline-flex h-11 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-transform duration-150 ease-out active:scale-[0.96]"
         >
-          了解会员
+          订阅
         </Link>
       </section>
 

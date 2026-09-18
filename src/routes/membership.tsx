@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { SiteShell } from "@/components/site-shell";
@@ -39,7 +38,7 @@ function MembershipPage() {
     try {
       const nextState = await startSubscription({ data: { plan } });
       setMembership(nextState);
-      toast.success("会员已开通，文章不限次数阅读");
+      toast.success("会员已开通");
     } catch (error) {
       const message = error instanceof Error ? error.message : "无法开通";
       toast.error(message === "Unauthorized" ? "请先登录" : message);
@@ -65,10 +64,9 @@ function MembershipPage() {
   return (
     <SiteShell posts={posts}>
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
-        <p className="text-sm font-medium text-primary">折页会员</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">抢先读技术长文</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">会员</h1>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-          新文章可设置开放时限。会员立刻看全文、不限次数；时限一到，普通读者也能读。正文在服务器裁切，不是前端藏起来。
+          新文立刻读全文，到期公开。
         </p>
 
         {membership.isPaid ? (
@@ -76,8 +74,8 @@ function MembershipPage() {
             <p className="text-sm font-medium text-primary">已开通 · {membership.planLabel}</p>
             <p className="mt-2 text-sm text-muted-foreground">
               {membership.expiresAt
-                ? `有效期至 ${formatZhDate(membership.expiresAt)}，剩余 ${membership.remainingDays} 天。期间阅读不限次数。`
-                : "长期有效，阅读不限次数。"}
+                ? `有效至 ${formatZhDate(membership.expiresAt)}，剩 ${membership.remainingDays} 天。`
+                : "长期有效。"}
             </p>
             {next ? (
               <Button asChild className="mt-4">
@@ -95,14 +93,6 @@ function MembershipPage() {
                   <span className="ml-1 text-sm font-normal text-muted-foreground">/ {plan.days} 天</span>
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{plan.blurb}</p>
-                <ul className="mt-4 space-y-2 text-sm">
-                  {["抢先阅读期内立刻看全文", "有效期内不限阅读次数", "到期后文章自动对所有人开放"].map((item) => (
-                    <li key={item} className="flex items-start gap-2">
-                      <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
                 <div className="mt-auto pt-5">
                   {isPending ? (
                     <Button className="w-full" disabled>
@@ -123,7 +113,7 @@ function MembershipPage() {
                         disabled={!!pending}
                         onClick={() => void subscribe(plan.id)}
                       >
-                        {pending === plan.id ? "开通中…" : `演示开通${plan.label}`}
+                        {pending === plan.id ? "开通中…" : `开通${plan.label}`}
                       </Button>
                     </SignInGate>
                   )}
@@ -133,15 +123,13 @@ function MembershipPage() {
           </div>
         )}
 
-        <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-          预览环境没有接真实支付，开通会直接写入本站会员记录，方便验证权限。兑换码{" "}
-          <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">FOLIO-TECH</code>{" "}
-          可开一年。
+        <p className="mt-4 text-xs text-muted-foreground">
+          预览环境直接写入会员记录。兑换码{" "}
+          <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">FOLIO-TECH</code>
         </p>
 
         <div className="mt-8 rounded-xl bg-card p-5 shadow-md">
           <h2 className="text-base font-semibold">兑换码</h2>
-          <p className="mt-1 text-sm text-muted-foreground">已登录读者可以兑换会员，次数同样不限。</p>
           {user ? (
             <form
               className="mt-4 flex flex-col gap-2 sm:flex-row"
@@ -172,10 +160,7 @@ function MembershipPage() {
 
         {exclusive.length ? (
           <section className="mt-10">
-            <h2 className="flex items-center gap-2 text-base font-semibold">
-              <Sparkles className="size-4 text-primary" />
-              当前抢先 / 专享
-            </h2>
+            <h2 className="text-base font-semibold">当前抢先 / 专享</h2>
             <ul className="mt-4 divide-y divide-border overflow-hidden rounded-xl bg-card shadow-md">
               {exclusive.map((post) => (
                 <li key={post.id}>

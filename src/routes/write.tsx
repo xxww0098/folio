@@ -1,13 +1,20 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { SiteShell } from "@/components/site-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WriteForm } from "@/components/write-form";
+import { MissingPage } from "@/components/missing-page";
 import { listPublishedPosts } from "@/lib/blog/server";
+import { getBackendAccess } from "@/lib/entrance/server";
 
 export const Route = createFileRoute("/write")({
+  beforeLoad: async () => {
+    const access = await getBackendAccess();
+    if (!access.unlocked) throw notFound();
+  },
   loader: () => listPublishedPosts(),
+  notFoundComponent: MissingPage,
   component: WritePage,
 });
 

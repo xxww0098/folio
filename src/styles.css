@@ -640,6 +640,103 @@
   height: 0;
 }
 
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* 折页 motion：掀页是主戏，列表像叠好的纸错落入场。 */
+:root {
+  --motion-stagger: 48ms;
+  --motion-quick: 150ms;
+  --motion-fast: 250ms;
+  --motion-slow: 420ms;
+  --ease-folio: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes folio-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes folio-heart {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.28);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes folio-mark {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.folio-page {
+  animation: folio-sheet var(--motion-fast) var(--ease-folio) both;
+}
+
+.folio-flow > * {
+  animation: folio-sheet var(--motion-slow) var(--ease-folio) both;
+}
+.folio-flow > *:nth-child(1) { animation-delay: calc(var(--motion-stagger) * 0); }
+.folio-flow > *:nth-child(2) { animation-delay: calc(var(--motion-stagger) * 1); }
+.folio-flow > *:nth-child(3) { animation-delay: calc(var(--motion-stagger) * 2); }
+.folio-flow > *:nth-child(4) { animation-delay: calc(var(--motion-stagger) * 3); }
+.folio-flow > *:nth-child(5) { animation-delay: calc(var(--motion-stagger) * 4); }
+.folio-flow > *:nth-child(6) { animation-delay: calc(var(--motion-stagger) * 5); }
+.folio-flow > *:nth-child(7) { animation-delay: calc(var(--motion-stagger) * 6); }
+.folio-flow > *:nth-child(n + 8) { animation-delay: calc(var(--motion-stagger) * 7); }
+
+.folio-cover {
+  transform-origin: left center;
+  transition-property: transform;
+  transition-duration: 500ms;
+  transition-timing-function: var(--ease-folio);
+}
+.group:hover .folio-cover,
+.group:focus-within .folio-cover {
+  transform: rotateY(-8deg);
+}
+
+.folio-nav-link {
+  position: relative;
+}
+.folio-nav-link[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  left: 0.55rem;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: left center;
+  animation: folio-mark var(--motion-fast) var(--ease-folio) both;
+}
+
+.folio-heart[data-liked="true"] {
+  animation: folio-heart 300ms var(--ease-folio);
+}
+
 .paywall-preview {
   max-height: 22rem;
   overflow: hidden;

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { FileText, Heart, MessageCircle, PenLine, Trash2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
@@ -37,8 +37,15 @@ import { ObsidianPanel } from "@/components/obsidian-panel";
 import { McpPanel } from "@/components/mcp-panel";
 import { ThemeGallery } from "@/components/theme-gallery";
 import { ReleaseBanner } from "@/components/release-banner";
+import { EntrancePanel } from "@/components/entrance-panel";
+import { MissingPage } from "@/components/missing-page";
+import { getBackendAccess } from "@/lib/entrance/server";
 
 export const Route = createFileRoute("/console")({
+  beforeLoad: async () => {
+    const access = await getBackendAccess();
+    if (!access.unlocked) throw notFound();
+  },
   loader: async () => {
     const posts = await listPublishedPosts();
     try {
@@ -54,7 +61,10 @@ export const Route = createFileRoute("/console")({
       return { posts, dash: null as AuthorDashboard | null, members: { subscribers: [], codes: [] } };
     }
   },
-  head: () => ({ meta: [{ title: "控制台 - 折页" }] }),
+  head: ({ loaderData }) => ({
+    meta: [{ title: loaderData ? "控制台 - 折页" : "折页 Folio" }],
+  }),
+  notFoundComponent: MissingPage,
   component: ConsolePage,
 });
 
@@ -293,6 +303,7 @@ function ConsolePage() {
                 <TabsTrigger value="trash">回收站</TabsTrigger>
                 <TabsTrigger value="members">成员</TabsTrigger>
                 <TabsTrigger value="plans">会员</TabsTrigger>
+                <TabsTrigger value="entrance">入口</TabsTrigger>
               </TabsList>
               <TabsContent value="posts">
                 {dash.posts.length === 0 ? (
@@ -608,6 +619,13 @@ function ConsolePage() {
                       </ul>
                     </section>
                   </div>
+                )}
+              </TabsContent>
+              <TabsContent value="entrance">
+                {dash.role !== "admin" ? (
+                  <p className="mt-6 text-sm text-muted-foreground">只有管理员可以设置后台入口。</p>
+                ) : (
+                  <EntrancePanel />
                 )}
               </TabsContent>
             </Tabs>

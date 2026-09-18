@@ -44,7 +44,7 @@ function Login() {
           </div>
           <h1 className="text-2xl font-semibold">登录</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            登录后可以评论、投稿，并订阅会员抢先阅读限时文章。
+            登录后可评论、投稿。
           </p>
           <div className="mt-8">
             <SignInGate fallback={<SignInOptions callbackURL={next} />}>

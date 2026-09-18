@@ -64,7 +64,10 @@ export function LikeButton({
       aria-pressed={liked}
       aria-label={liked ? "取消点赞" : "点赞"}
     >
-      <Heart className={cn("size-4", liked && "fill-current")} />
+      <Heart
+        className={cn("folio-heart size-4", liked && "fill-current")}
+        data-liked={liked ? "true" : undefined}
+      />
       <span className="tabular-nums">{count}</span>
     </button>
   );

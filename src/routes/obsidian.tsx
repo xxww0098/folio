@@ -34,7 +34,7 @@ function ObsidianGuidePage() {
         <p className="font-mono text-xs text-muted-foreground">Obsidian</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">把笔记同步到折页</h1>
         <p className="mt-4 text-base leading-relaxed text-foreground/90">
-          配置站点与个人令牌，打开一篇笔记，用命令面板发布、上传图片，或把站点上的文章拉回库里。
+          配置站点与令牌，用命令面板发布或拉回文章。
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">

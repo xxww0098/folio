@@ -1,15 +1,22 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, notFound } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getPostForEdit, listPublishedPosts } from "@/lib/blog/server";
+import { getBackendAccess } from "@/lib/entrance/server";
 import type { PostDetail } from "@/lib/blog/types";
+import { MissingPage } from "@/components/missing-page";
 import { SiteShell } from "@/components/site-shell";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WriteForm } from "@/components/write-form";
 
 export const Route = createFileRoute("/write/$id")({
+  beforeLoad: async () => {
+    const access = await getBackendAccess();
+    if (!access.unlocked) throw notFound();
+  },
   loader: () => listPublishedPosts(),
+  notFoundComponent: MissingPage,
   component: EditPage,
 });
 
@@ -26,7 +33,9 @@ function EditPage() {
       setPost(null);
       return;
     }
-    void getPostForEdit({ data: numericId }).then(setPost).catch(() => setPost(null));
+    void getPostForEdit({ data: numericId })
+      .then(setPost)
+      .catch(() => setPost(null));
   }, [id, user]);
 
   return (
