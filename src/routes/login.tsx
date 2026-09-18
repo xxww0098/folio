@@ -44,7 +44,7 @@ function Login() {
           </div>
           <h1 className="text-2xl font-semibold">登录</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            登录后可评论、投稿。
+            个人站点，仅站长可登录。
           </p>
           <div className="mt-8">
             <SignInGate fallback={<SignInOptions callbackURL={next} />}>
@@ -91,8 +91,6 @@ function SignInOptions({ callbackURL }: { callbackURL: string }) {
 }
 
 function EmailPasswordForm({ callbackURL }: { callbackURL: string }) {
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -101,20 +99,11 @@ function EmailPasswordForm({ callbackURL }: { callbackURL: string }) {
     event.preventDefault();
     setBusy(true);
     try {
-      if (mode === "signup") {
-        const { error } = await authClient.signUp.email({
-          name: name.trim() || email.split("@")[0] || "作者",
-          email: email.trim(),
-          password,
-        });
-        if (error) throw new Error(error.message || "无法注册");
-      } else {
-        const { error } = await authClient.signIn.email({
-          email: email.trim(),
-          password,
-        });
-        if (error) throw new Error(error.message || "邮箱或密码不对");
-      }
+      const { error } = await authClient.signIn.email({
+        email: email.trim(),
+        password,
+      });
+      if (error) throw new Error(error.message || "邮箱或密码不对");
       window.location.href = callbackURL;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "无法登录");
@@ -125,19 +114,6 @@ function EmailPasswordForm({ callbackURL }: { callbackURL: string }) {
 
   return (
     <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
-      {mode === "signup" ? (
-        <div>
-          <Label htmlFor="folio-name">名称</Label>
-          <Input
-            id="folio-name"
-            className="mt-2"
-            value={name}
-            maxLength={32}
-            autoComplete="nickname"
-            onChange={(event) => setName(event.target.value)}
-          />
-        </div>
-      ) : null}
       <div>
         <Label htmlFor="folio-email">邮箱</Label>
         <Input
@@ -159,20 +135,13 @@ function EmailPasswordForm({ callbackURL }: { callbackURL: string }) {
           required
           minLength={8}
           value={password}
-          autoComplete={mode === "signup" ? "new-password" : "current-password"}
+          autoComplete="current-password"
           onChange={(event) => setPassword(event.target.value)}
         />
       </div>
       <Button type="submit" className="w-full" disabled={busy}>
-        {busy ? "请稍候…" : mode === "signup" ? "注册并登录" : "登录"}
+        {busy ? "请稍候…" : "登录"}
       </Button>
-      <button
-        type="button"
-        className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
-        onClick={() => setMode(mode === "signup" ? "signin" : "signup")}
-      >
-        {mode === "signup" ? "已有账号？去登录" : "没有账号？注册"}
-      </button>
     </form>
   );
 }

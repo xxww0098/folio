@@ -38,6 +38,8 @@ import { McpPanel } from "@/components/mcp-panel";
 import { ThemeGallery } from "@/components/theme-gallery";
 import { ReleaseBanner } from "@/components/release-banner";
 import { EntrancePanel } from "@/components/entrance-panel";
+import { BackupPanel } from "@/components/backup-panel";
+import { StoragePanel } from "@/components/storage-panel";
 import { MissingPage } from "@/components/missing-page";
 import { getBackendAccess } from "@/lib/entrance/server";
 
@@ -304,6 +306,8 @@ function ConsolePage() {
                 <TabsTrigger value="members">成员</TabsTrigger>
                 <TabsTrigger value="plans">会员</TabsTrigger>
                 <TabsTrigger value="entrance">入口</TabsTrigger>
+                <TabsTrigger value="storage">存储</TabsTrigger>
+                <TabsTrigger value="backup">备份</TabsTrigger>
               </TabsList>
               <TabsContent value="posts">
                 {dash.posts.length === 0 ? (
@@ -435,6 +439,7 @@ function ConsolePage() {
                             <p className="truncate text-sm">{item.alt || item.filename}</p>
                             <p className="text-xs text-muted-foreground">
                               {item.groupName}
+                              {item.backend === "s3" ? " · 对象存储" : item.backend === "pg" ? " · 数据库" : ""}
                               {item.sizeBytes ? ` · ${formatBytes(item.sizeBytes)}` : ""}
                             </p>
                           </div>
@@ -626,6 +631,20 @@ function ConsolePage() {
                   <p className="mt-6 text-sm text-muted-foreground">只有管理员可以设置后台入口。</p>
                 ) : (
                   <EntrancePanel />
+                )}
+              </TabsContent>
+              <TabsContent value="storage">
+                {dash.role !== "admin" ? (
+                  <p className="mt-6 text-sm text-muted-foreground">只有管理员可以设置存储。</p>
+                ) : (
+                  <StoragePanel />
+                )}
+              </TabsContent>
+              <TabsContent value="backup">
+                {dash.role !== "admin" ? (
+                  <p className="mt-6 text-sm text-muted-foreground">只有管理员可以备份站点。</p>
+                ) : (
+                  <BackupPanel />
                 )}
               </TabsContent>
             </Tabs>

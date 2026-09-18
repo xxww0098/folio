@@ -22,6 +22,9 @@
 - MCP：写作 Agent 远程列稿、改稿、推送（`/api/mcp`，同一类 `folio_` 令牌）
 - 六套内置主题，顶栏切换
 - 后台入口：控制台可设一段秘密路径；开启后直接打开 `/console` 显示成普通 404
+- 单账户：首次启动生成站长邮箱和密码，没有公开注册
+- 备份：控制台导出 / 导入整站 JSON，方便换机器
+- 存储：图片默认写进 Postgres；控制台可改成 S3 兼容对象存储（R2 / MinIO / OSS）
 
 ## 用 Docker 自托管
 
@@ -44,13 +47,27 @@ cp .env.example .env
 | `POSTGRES_PASSWORD` | 数据库密码，不要包含 `@ : / # ?` |
 | `FOLIO_PORT` | 宿主机前端端口，默认 `8011` |
 | `FOLIO_VERSION` | 镜像 tag。第一次可保持 `latest` |
+| `FOLIO_ADMIN_EMAIL` | 可选。站长邮箱；不填则随机生成 |
+| `FOLIO_ADMIN_PASSWORD` | 可选。至少 8 位；不填则随机生成 |
 
 ```sh
 docker compose up -d --build
 docker compose logs folio
 ```
 
-日志里会打印 **后台入口** 的完整地址（首次启动当场生成并写入数据库）。打开那条路径才能进控制台；直接访问 `/console` 会显示普通 404。第一次注册的邮箱账号自动成为管理员。
+日志里会打印 **后台入口** 和 **站长账户**（首次启动当场生成并写入数据库）：
+
+```
+[folio] ------------------------------------------------------------
+[folio] 安装完成，请打开浏览器访问：
+[folio]   地址    http://localhost:8011/<入口>
+[folio]   邮箱    <随机或你填的邮箱>
+[folio]   密码    <随机或你填的密码>
+[folio] 密码只显示这一次，请立刻保存。
+[folio] ------------------------------------------------------------
+```
+
+打开那条入口地址才能进控制台；直接访问 `/console` 会显示普通 404。站点只有一个账户，没有公开注册。之后重启只再打印入口和邮箱，不再打印密码。
 
 生产请把站点放在 HTTPS 反向代理后面。会话 Cookie 用 `__Host-` 前缀：本机 `localhost` 可以用 HTTP，公网必须 HTTPS。
 
@@ -62,7 +79,34 @@ blog.example.com {
 }
 ```
 
-只备份 Docker volume `folio-db` 即可（文章、会员、附件都在 Postgres 里）。
+只备份 Docker volume `folio-db` 也可以（文章、会员默认在 Postgres 里；若把图片改到对象存储，桶要单独留着）。换机器更稳妥的是导出一份 JSON（导出时会把对象存储里的图拉进文件）：
+
+控制台 → **备份** → 导出。新机器启动后用同一页导入，或：
+
+```sh
+docker compose exec -T folio node scripts/export-db.mjs > folio.json
+docker compose exec -T folio node scripts/import-db.mjs < folio.json
+```
+
+导入会覆盖目标库的全部内容。会话不会跟着备份走，导入后重新登录。
+
+### 对象存储（可选）
+
+不配则图片写进 Postgres。图多了可以改成 S3 兼容存储：Cloudflare R2、MinIO、阿里云 OSS、AWS S3。
+
+控制台 → **存储** 填写 Endpoint / 桶 / 密钥，或在 `.env` 里设置：
+
+| 变量 | 说明 |
+| --- | --- |
+| `FOLIO_S3_ENDPOINT` | 例如 `https://<id>.r2.cloudflarestorage.com` 或 `http://minio:9000` |
+| `FOLIO_S3_BUCKET` | 桶名 |
+| `FOLIO_S3_REGION` | R2 用 `auto`；AWS 填区域 |
+| `FOLIO_S3_ACCESS_KEY` / `FOLIO_S3_SECRET_KEY` | 密钥 |
+| `FOLIO_S3_FORCE_PATH_STYLE` | MinIO 设 `true`；AWS / OSS 一般 `false` |
+| `FOLIO_S3_PUBLIC_URL` | 可选。桶的公开/CDN 前缀，填了之后读图会 302 过去 |
+| `FOLIO_S3_PREFIX` | 对象键前缀，默认 `folio` |
+
+页面上保存的设置优先于环境变量。文章里的图片地址默认仍是 `/api/files/{id}`。写文章时把鼠标放到图上，或右键，可以改成对象存储的公开地址。已有图片用同一页的「迁到对象存储 / 收回数据库」。
 
 ### 2. 从 GitHub Release 升级
 
@@ -78,8 +122,8 @@ blog.example.com {
 脚本会把 `.env` 里的 `FOLIO_VERSION` 写成最新 tag，再 `docker compose pull && up`。指定版本：
 
 ```sh
-FOLIO_VERSION=v0.1.2 docker compose pull folio
-FOLIO_VERSION=v0.1.2 docker compose up -d
+FOLIO_VERSION=v0.1.3 docker compose pull folio
+FOLIO_VERSION=v0.1.3 docker compose up -d
 ```
 
 控制台页会显示当前版本；GitHub 上有更新时会提示跑上面的脚本。
@@ -100,8 +144,8 @@ docker compose up -d
 ### 3. 发布新版本（维护者）
 
 ```sh
-git tag v0.1.2
-git push origin v0.1.2
+git tag v0.1.3
+git push origin v0.1.3
 ```
 
 推送 `v*` 标签后，GitHub Actions 会：构建 `amd64` / `arm64` 镜像 → 推送到 GHCR → 创建 GitHub Release。
@@ -130,10 +174,13 @@ npm run test
 | `BETTER_AUTH_URL` | 运行时 | 站点对外 origin |
 | `BETTER_AUTH_SECRET` | 运行时 | 会话签名密钥 |
 | `VITE_AUTH_ENABLED` | **构建时** | `"true"` 打开登录 |
-| `VITE_FOLIO_EMAIL_PASSWORD` | **构建时** | `"true"` 打开邮箱注册 / 登录（自托管镜像默认打开） |
+| `VITE_FOLIO_EMAIL_PASSWORD` | **构建时** | `"true"` 打开邮箱登录（自托管镜像默认打开，无公开注册） |
 | `VITE_FOLIO_VERSION` | **构建时** | 写入前端的版本号，发 Release 时由 CI 填入 |
 | `FOLIO_VERSION` | Compose | 镜像 tag |
 | `FOLIO_PORT` | Compose | 宿主机前端端口，默认 8011 |
+| `FOLIO_ADMIN_EMAIL` | 运行时 | 可选。首次启动创建站长时使用；已有账户后忽略 |
+| `FOLIO_ADMIN_PASSWORD` | 运行时 | 可选。至少 8 位；已有账户后忽略 |
+| `FOLIO_ADMIN_NAME` | 运行时 | 可选。显示名，默认「站长」 |
 
 Vite 变量在构建时打进前端，改它们必须重新 `docker compose build`。不要把密钥写进源码或提交 `.env`。
 

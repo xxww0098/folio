@@ -14,8 +14,8 @@ until node scripts/migrate.mjs; do
   sleep 2
 done
 
-echo "[folio] checking backend entrance…"
-node scripts/ensure-entrance.mjs
+echo "[folio] initializing host…"
+node scripts/ensure-init.mjs
 
 PORT="${PORT:-8080}"
 HOST="${HOST:-0.0.0.0}"

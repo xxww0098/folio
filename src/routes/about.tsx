@@ -15,7 +15,7 @@ function AboutPage() {
       <article className="overflow-hidden rounded-xl bg-card p-6 shadow-md sm:p-8">
         <h1 className="text-2xl font-semibold tracking-tight">关于折页</h1>
         <p className="mt-6 text-base leading-relaxed text-foreground/90">
-          写给工程师的独立博客。栏目按语言分，正文带可运行的代码。登录后可投稿、评论；Obsidian
+          写给工程师的独立博客。栏目按语言分，正文带可运行的代码。站长登录后写稿、发瞬间；Obsidian
           与写作 Agent 用同一类令牌推送。
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
