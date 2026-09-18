@@ -1,0 +1,91 @@
+# 折页 Folio — 自托管
+#
+# 第一次（本机构建，不依赖 GHCR）：
+#   cp .env.example .env   # 改密码和 BETTER_AUTH_URL
+#   docker compose up -d --build
+#
+# 之后升级（读 GitHub 最新 Release，拉取对应镜像）：
+#   ./scripts/update-from-release.sh
+#
+# 指定版本：
+#   FOLIO_VERSION=v0.1.0 docker compose pull folio && docker compose up -d
+#
+# 镜像：ghcr.io/xxww0098/folio:<tag>
+# Postgres 不对外暴露。附件存在数据库里，备份 volume folio-db 即可。
+
+name: folio
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    init: true
+    environment:
+      POSTGRES_DB: folio
+      POSTGRES_USER: folio
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    volumes:
+      - folio-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U folio -d folio"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    stop_grace_period: 30s
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - folio
+
+  folio:
+    image: ghcr.io/xxww0098/folio:${FOLIO_VERSION:-latest}
+    pull_policy: missing
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_FOLIO_VERSION: ${FOLIO_VERSION:-0.1.0}
+        VITE_AUTH_ENABLED: "true"
+        VITE_FOLIO_EMAIL_PASSWORD: "true"
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://folio:${POSTGRES_PASSWORD}@postgres:5432/folio
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:8080}
+      VITE_AUTH_ENABLED: "true"
+      VITE_FOLIO_VERSION: ${FOLIO_VERSION:-0.1.0}
+      NODE_ENV: production
+      HOST: "0.0.0.0"
+      PORT: "8080"
+    ports:
+      - "${FOLIO_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/mcp"]
+      interval: 20s
+      timeout: 5s
+      start_period: 45s
+      retries: 8
+    stop_grace_period: 20s
+    logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - folio
+
+volumes:
+  folio-db:
+
+networks:
+  folio:

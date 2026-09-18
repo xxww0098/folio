@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+cd /app
+
+echo "[folio] applying migrations…"
+i=0
+until node scripts/migrate.mjs; do
+  i=$((i + 1))
+  if [ "$i" -ge 12 ]; then
+    echo "[folio] migrate failed after ${i} attempts" >&2
+    exit 1
+  fi
+  echo "[folio] postgres not ready, retry ${i}/12…"
+  sleep 2
+done
+
+PORT="${PORT:-8080}"
+HOST="${HOST:-0.0.0.0}"
+echo "[folio] listening on ${HOST}:${PORT} (version ${VITE_FOLIO_VERSION:-unknown})"
+
+exec npx --no-install srvx serve --prod \
+  --host "$HOST" \
+  --port "$PORT" \
+  --static .vercel/output/static \
+  --entry .vercel/output/functions/__server.func/index.mjs

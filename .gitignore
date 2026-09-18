@@ -1,0 +1,23 @@
+node_modules/
+.vercel/
+.output/
+.nitro/
+.tanstack/
+.grok/
+artifacts/
+screenshots/
+*.log
+.env
+.env.local
+.env.*.local
+docker-compose.override.yml
+.project_id
+.node_modules.lock
+.DS_Store
+dist/
+coverage/
+
+# sandbox runtime contract — not part of the published repo
+AGENTS.md
+startup.sh
+public/__grok/

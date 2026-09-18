@@ -1,0 +1,9 @@
+{
+  "id": "folio",
+  "name": "折页",
+  "version": "1.0.0",
+  "minAppVersion": "1.4.4",
+  "description": "把 Obsidian 笔记发布、拉取、更新到折页，并上传本地图片。",
+  "author": "折页",
+  "isDesktopOnly": false
+}

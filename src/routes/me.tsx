@@ -1,0 +1,10 @@
+import { createFileRoute, redirect } from "@tanstack/react-router";
+
+export const Route = createFileRoute("/me")({
+  beforeLoad: () => {
+    throw redirect({ to: "/console" });
+  },
+  component: function MeRedirect() {
+    return null;
+  },
+});
