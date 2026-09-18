@@ -8,7 +8,7 @@
 #   ./scripts/update-from-release.sh
 #
 # 指定版本：
-#   FOLIO_VERSION=v0.1.1 docker compose pull folio && docker compose up -d
+#   FOLIO_VERSION=v0.1.2 docker compose pull folio && docker compose up -d
 #
 # 镜像：ghcr.io/xxww0098/folio:<tag>
 # 前端入口默认 8011（容器内仍监听 8080）。
@@ -53,7 +53,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_FOLIO_VERSION: ${FOLIO_VERSION:-0.1.1}
+        VITE_FOLIO_VERSION: ${FOLIO_VERSION:-0.1.2}
         VITE_AUTH_ENABLED: "true"
         VITE_FOLIO_EMAIL_PASSWORD: "true"
     restart: unless-stopped
@@ -66,14 +66,14 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:8011}
       VITE_AUTH_ENABLED: "true"
-      VITE_FOLIO_VERSION: ${FOLIO_VERSION:-0.1.1}
+      VITE_FOLIO_VERSION: ${FOLIO_VERSION:-0.1.2}
       NODE_ENV: production
       HOST: "0.0.0.0"
       PORT: "8080"
     ports:
       - "${FOLIO_PORT:-8011}:8080"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/mcp"]
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/favicon.svg >/dev/null && curl -fsS http://127.0.0.1:8080/api/mcp >/dev/null"]
       interval: 20s
       timeout: 5s
       start_period: 45s

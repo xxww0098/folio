@@ -45,5 +45,5 @@ RUN chmod +x /entrypoint.sh \
 USER folio
 EXPOSE 8080
 HEALTHCHECK --interval=20s --timeout=5s --start-period=45s --retries=5 \
-  CMD curl -fsS "http://127.0.0.1:${PORT:-8080}/api/mcp" >/dev/null || exit 1
+  CMD /bin/sh -c 'curl -fsS "http://127.0.0.1:${PORT:-8080}/favicon.svg" >/dev/null && curl -fsS "http://127.0.0.1:${PORT:-8080}/api/mcp" >/dev/null'
 ENTRYPOINT ["/entrypoint.sh"]
