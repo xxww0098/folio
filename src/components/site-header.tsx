@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu } from "lucide-react";
 import { AccountSlot } from "@/components/account-slot";
+import { FolioMark } from "@/components/folio-mark";
 import { SearchDialog } from "@/components/search-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -25,8 +26,8 @@ export function SiteHeader({ posts }: { posts: PostListItem[] }) {
     <header className="sticky top-0 z-40 border-b border-header-foreground/10 bg-header text-header-foreground">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 lg:px-6">
         <Link to="/" className="flex shrink-0 items-center gap-2.5">
-          <span className="grid size-8 place-items-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-            折
+          <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+            <FolioMark className="size-5" />
           </span>
           <span className="font-display text-base font-semibold tracking-tight">折页</span>
         </Link>

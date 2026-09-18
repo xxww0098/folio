@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SiteShell } from "@/components/site-shell";
+import { FolioMark } from "@/components/folio-mark";
 import { listPublishedPosts } from "@/lib/blog/server";
 
 function safeNext(value: unknown) {
@@ -37,8 +38,8 @@ function Login() {
       <div className="mx-auto grid min-h-[70vh] max-w-md place-items-center px-4 py-16">
         <div className="w-full rounded-xl bg-card p-8 shadow-md">
           <div className="mb-6 flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-              折
+            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+              <FolioMark className="size-5" />
             </span>
             <span className="font-semibold">折页</span>
           </div>

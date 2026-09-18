@@ -1,8 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { FileText, Heart, MessageCircle, PenLine, Trash2, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
-import { RedirectToSignIn } from "@/lib/auth/gates";
+import { useEffect, useState, type ReactNode } from "react";
+import { SignInButtons } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   deletePost,
@@ -17,7 +17,7 @@ import {
 import { deleteComment } from "@/lib/comments/server";
 import { deleteAttachment, listAttachments, uploadAttachment, type AttachmentItem } from "@/lib/attachments/server";
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
-import type { AuthorDashboard } from "@/lib/blog/types";
+import type { AuthorDashboard, PostListItem } from "@/lib/blog/types";
 import { formatZhDate } from "@/lib/format";
 import {
   createRedeemCode,
@@ -30,9 +30,7 @@ import {
 import { ACCESS_LABEL } from "@/lib/membership/access";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SiteShell } from "@/components/site-shell";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ObsidianPanel } from "@/components/obsidian-panel";
 import { McpPanel } from "@/components/mcp-panel";
 import { ThemeGallery } from "@/components/theme-gallery";
@@ -41,9 +39,14 @@ import { EntrancePanel } from "@/components/entrance-panel";
 import { BackupPanel } from "@/components/backup-panel";
 import { StoragePanel } from "@/components/storage-panel";
 import { MissingPage } from "@/components/missing-page";
+import { ConsoleDashboard } from "@/components/console/dashboard";
+import { isConsoleSection, type ConsoleSection } from "@/components/console/nav";
+import { ConsoleShell } from "@/components/console/shell";
 import { getBackendAccess } from "@/lib/entrance/server";
 
 export const Route = createFileRoute("/console")({
+  validateSearch: (search: Record<string, unknown>): { section?: ConsoleSection } =>
+    isConsoleSection(search.section) ? { section: search.section } : {},
   beforeLoad: async () => {
     const access = await getBackendAccess();
     if (!access.unlocked) throw notFound();
@@ -72,6 +75,7 @@ export const Route = createFileRoute("/console")({
 
 function ConsolePage() {
   const { posts, dash: initial, members: initialMembers } = Route.useLoaderData();
+  const { section = "dashboard" } = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
   const [dash, setDash] = useState(initial);
   const [members, setMembers] = useState(initialMembers);
@@ -257,422 +261,537 @@ function ConsolePage() {
     }
   }
 
-  return (
-    <SiteShell posts={posts}>
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">控制台</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {dash ? `${ROLE_LABEL[dash.role]} · 文章、附件、Obsidian、Agent 与外观` : "管理文章、附件、回收站与成员。"}
-            </p>
-            <ReleaseBanner />
-          </div>
-          <Button asChild>
-            <Link to="/write">写文章</Link>
-          </Button>
-        </div>
+  const userName = user?.displayName ?? user?.primaryEmail ?? "Administrator";
+  const viewDash = dash ?? publicDash(posts);
+  const role = viewDash.role;
+  const canManage = Boolean(user && dash);
 
-        {isPending ? (
-          <div className="mt-8 grid gap-4 sm:grid-cols-4">
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
-          </div>
-        ) : !user || !dash ? (
-          <div className="mt-10">
-            <RedirectToSignIn />
-          </div>
-        ) : (
-          <>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              <Stat icon={FileText} label="文章" value={dash.postCount} />
-              <Stat icon={PenLine} label="草稿" value={dash.draftCount} />
-              <Stat icon={MessageCircle} label="评论" value={dash.commentCount} />
-              <Stat icon={Heart} label="获赞" value={dash.likeCount} />
-              <Stat icon={Trash2} label="回收站" value={dash.trash.length} />
-            </div>
-
-            <Tabs defaultValue="posts" className="mt-10">
-              <TabsList className="h-auto w-full flex-wrap justify-start">
-                <TabsTrigger value="posts">文章</TabsTrigger>
-                <TabsTrigger value="comments">评论</TabsTrigger>
-                <TabsTrigger value="files">附件</TabsTrigger>
-                <TabsTrigger value="obsidian">Obsidian</TabsTrigger>
-                <TabsTrigger value="agent">Agent</TabsTrigger>
-                <TabsTrigger value="appearance">外观</TabsTrigger>
-                <TabsTrigger value="trash">回收站</TabsTrigger>
-                <TabsTrigger value="members">成员</TabsTrigger>
-                <TabsTrigger value="plans">会员</TabsTrigger>
-                <TabsTrigger value="entrance">入口</TabsTrigger>
-                <TabsTrigger value="storage">存储</TabsTrigger>
-                <TabsTrigger value="backup">备份</TabsTrigger>
-              </TabsList>
-              <TabsContent value="posts">
-                {dash.posts.length === 0 ? (
-                  <p className="mt-6 text-sm text-muted-foreground">还没有文章。从一篇短的开始。</p>
-                ) : (
-                  <ul className="mt-4 divide-y divide-border overflow-hidden rounded-xl bg-card shadow-md">
-                    {dash.posts.map((post) => (
-                      <li key={post.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <p className="font-medium">
-                            <Link to="/posts/$slug" params={{ slug: post.slug }} className="hover:text-primary">
-                              {post.title}
-                            </Link>
-                          </p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {post.topic} · {post.status === "published" ? "已发布" : "草稿"}
-                            {post.exclusive ? ` · ${ACCESS_LABEL[post.accessMode]}` : ""}
-                            {post.updatedAt ? ` · ${formatZhDate(post.updatedAt)}` : ""}
-                            {` · ${post.viewCount} 次阅读`}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button asChild size="sm" variant="outline">
-                            <Link to="/write/$id" params={{ id: String(post.id) }}>
-                              编辑
-                            </Link>
-                          </Button>
-                          {post.status === "published" ? (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={busy === `feat-${post.id}`}
-                              onClick={() => void onFeatured(post.id, !post.featured)}
-                            >
-                              {post.featured ? "取消置顶" : "置顶"}
-                            </Button>
-                          ) : null}
-                          {post.status === "published" ? (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={busy === `status-${post.id}`}
-                              onClick={() => void onStatus(post.id, "draft")}
-                            >
-                              撤回
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={busy === `status-${post.id}`}
-                              onClick={() => void onStatus(post.id, "published")}
-                            >
-                              发布
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-destructive"
-                            disabled={busy === `del-${post.id}`}
-                            onClick={() => void onDeletePost(post.id)}
-                          >
-                            删除
-                          </Button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </TabsContent>
-              <TabsContent value="comments">
-                {dash.comments.length === 0 ? (
-                  <p className="mt-6 text-sm text-muted-foreground">还没有收到评论。</p>
-                ) : (
-                  <ul className="mt-4 divide-y divide-border overflow-hidden rounded-xl bg-card shadow-md">
-                    {dash.comments.map((comment) => (
-                      <li key={comment.id} className="px-5 py-4">
-                        <p className="text-sm">
-                          <span className="font-medium">{comment.authorName}</span>
-                          <span className="text-muted-foreground"> 评论了 </span>
-                          <Link to="/posts/$slug" params={{ slug: comment.postSlug }} className="text-primary hover:underline">
-                            {comment.postTitle}
-                          </Link>
-                        </p>
-                        <p className="mt-2 text-sm leading-relaxed">{comment.body}</p>
-                        <div className="mt-2 flex items-center justify-between">
-                          <time className="text-xs text-muted-foreground">{formatZhDate(comment.createdAt)}</time>
-                          <button
-                            type="button"
-                            className="text-xs text-muted-foreground hover:text-destructive"
-                            onClick={() => void onDeleteComment(comment.id)}
-                          >
-                            删除
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </TabsContent>
-              <TabsContent value="files">
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm text-muted-foreground">站点封面与已上传的图片。单张不超过 2 MB。</p>
-                  <label className="inline-flex h-11 cursor-pointer items-center rounded-md bg-primary px-3 text-sm text-primary-foreground">
-                    {busy === "upload" ? "上传中…" : "上传图片"}
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,image/gif"
-                      className="hidden"
-                      disabled={busy === "upload"}
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        event.target.value = "";
-                        void onUpload(file);
-                      }}
-                    />
-                  </label>
-                </div>
-                {files.length === 0 ? (
-                  <p className="mt-6 text-sm text-muted-foreground">还没有附件。</p>
-                ) : (
-                  <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    {files.map((item) => (
-                      <li key={item.id} className="overflow-hidden rounded-xl bg-card shadow-md">
-                        <img src={item.url} alt={item.alt} className="folio-photo aspect-16/10 w-full object-cover" />
-                        <div className="flex items-start justify-between gap-2 px-3 py-2">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm">{item.alt || item.filename}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {item.groupName}
-                              {item.backend === "s3" ? " · 对象存储" : item.backend === "pg" ? " · 数据库" : ""}
-                              {item.sizeBytes ? ` · ${formatBytes(item.sizeBytes)}` : ""}
-                            </p>
-                          </div>
-                          {item.stored ? (
-                            <button
-                              type="button"
-                              className="shrink-0 text-xs text-muted-foreground hover:text-destructive"
-                              disabled={busy === `file-${item.id}`}
-                              onClick={() => void onDeleteFile(item.id)}
-                            >
-                              删除
-                            </button>
-                          ) : null}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </TabsContent>
-              <TabsContent value="obsidian">
-                <ObsidianPanel />
-              </TabsContent>
-              <TabsContent value="agent">
-                <div className="mt-4">
-                  <McpPanel />
-                </div>
-              </TabsContent>
-              <TabsContent value="appearance">
-                <div className="mt-2">
-                  <p className="text-sm text-muted-foreground">
-                    皮肤存在这台设备上，不跟账号走。代码块始终保持深色高亮。
-                  </p>
-                  <div className="mt-6">
-                    <ThemeGallery compact />
-                  </div>
-                </div>
-              </TabsContent>
-              <TabsContent value="trash">
-                {dash.trash.length === 0 ? (
-                  <p className="mt-6 text-sm text-muted-foreground">回收站是空的。</p>
-                ) : (
-                  <ul className="mt-4 divide-y divide-border overflow-hidden rounded-xl bg-card shadow-md">
-                    {dash.trash.map((post) => (
-                      <li key={post.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <p className="font-medium">{post.title}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            {post.topic} · {post.status === "published" ? "曾发布" : "草稿"}
-                            {post.updatedAt ? ` · ${formatZhDate(post.updatedAt)}` : ""}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busy === `restore-${post.id}`}
-                            onClick={() => void onRestore(post.id)}
-                          >
-                            恢复
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-destructive"
-                            disabled={busy === `purge-${post.id}`}
-                            onClick={() => void onPurge(post.id)}
-                          >
-                            彻底删除
-                          </Button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </TabsContent>
-              <TabsContent value="members">
-                {dash.role !== "admin" ? (
-                  <p className="mt-6 text-sm text-muted-foreground">只有管理员可以管理成员角色。</p>
-                ) : dash.members.length === 0 ? (
-                  <p className="mt-6 text-sm text-muted-foreground">还没有其他成员。</p>
-                ) : (
-                  <ul className="mt-4 divide-y divide-border overflow-hidden rounded-xl bg-card shadow-md">
-                    {dash.members.map((member) => (
-                      <li key={member.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <p className="font-medium">{member.name}</p>
-                          <p className="mt-1 truncate text-xs text-muted-foreground">{member.email ?? "未填写邮箱"}</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Select
-                            value={member.role}
-                            onValueChange={(value) => void onRole(member.id, value as Role)}
-                            disabled={busy === `role-${member.id}`}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ROLES.map((role) => (
-                                <SelectItem key={role} value={role}>
-                                  {ROLE_LABEL[role]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {members.subscribers.some((item) => item.userId === member.id && item.status === "active") ? (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              disabled={busy === `revoke-${member.id}`}
-                              onClick={() => void onRevoke(member.id)}
-                            >
-                              取消会员
-                            </Button>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={busy === `grant-${member.id}`}
-                              onClick={() => void onGrant(member.id)}
-                            >
-                              赠送年卡
-                            </Button>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </TabsContent>
-              <TabsContent value="plans">
-                {dash.role !== "admin" ? (
-                  <p className="mt-6 text-sm text-muted-foreground">只有管理员可以管理订阅与兑换码。</p>
-                ) : (
-                  <div className="mt-4 space-y-8">
-                    <section>
-                      <div className="flex items-center justify-between gap-3">
-                        <h2 className="flex items-center gap-2 text-sm font-semibold">
-                          <Sparkles className="size-4 text-primary" />
-                          订阅
-                        </h2>
-                      </div>
-                      {members.subscribers.length === 0 ? (
-                        <p className="mt-3 text-sm text-muted-foreground">还没有订阅记录。读者可在会员页开通或兑换。</p>
-                      ) : (
-                        <ul className="mt-3 divide-y divide-border overflow-hidden rounded-xl bg-card shadow-md">
-                          {members.subscribers.map((item) => (
-                            <li key={item.userId} className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                              <div>
-                                <p className="font-medium">{item.name}</p>
-                                <p className="mt-1 text-xs text-muted-foreground">
-                                  {item.plan === "monthly" ? "月卡" : item.plan === "yearly" ? "年卡" : "赠送"} · {item.status === "active" ? "有效" : "已失效"}
-                                  {item.expiresAt ? ` · 至 ${formatZhDate(item.expiresAt)}` : ""}
-                                </p>
-                              </div>
-                              {item.status === "active" ? (
-                                <Button size="sm" variant="ghost" disabled={busy === `revoke-${item.userId}`} onClick={() => void onRevoke(item.userId)}>
-                                  取消
-                                </Button>
-                              ) : null}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </section>
-                    <section>
-                      <div className="flex items-center justify-between gap-3">
-                        <h2 className="text-sm font-semibold">兑换码</h2>
-                        <Button size="sm" variant="outline" disabled={busy === "code"} onClick={() => void onCreateCode()}>
-                          生成年卡码
-                        </Button>
-                      </div>
-                      <ul className="mt-3 divide-y divide-border overflow-hidden rounded-xl bg-card shadow-md">
-                        {members.codes.map((item) => (
-                          <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                            <code className="font-mono text-xs">{item.code}</code>
-                            <span className="text-xs text-muted-foreground">
-                              {item.usedCount}/{item.maxUses} · {item.days} 天
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </section>
-                  </div>
-                )}
-              </TabsContent>
-              <TabsContent value="entrance">
-                {dash.role !== "admin" ? (
-                  <p className="mt-6 text-sm text-muted-foreground">只有管理员可以设置后台入口。</p>
-                ) : (
-                  <EntrancePanel />
-                )}
-              </TabsContent>
-              <TabsContent value="storage">
-                {dash.role !== "admin" ? (
-                  <p className="mt-6 text-sm text-muted-foreground">只有管理员可以设置存储。</p>
-                ) : (
-                  <StoragePanel />
-                )}
-              </TabsContent>
-              <TabsContent value="backup">
-                {dash.role !== "admin" ? (
-                  <p className="mt-6 text-sm text-muted-foreground">只有管理员可以备份站点。</p>
-                ) : (
-                  <BackupPanel />
-                )}
-              </TabsContent>
-            </Tabs>
-          </>
-        )}
+  let body: ReactNode;
+  if (section === "dashboard") {
+    body = (
+      <ConsoleDashboard
+        dash={viewDash}
+        onRefresh={canManage ? () => void refresh() : () => undefined}
+        refreshing={busy !== null}
+      />
+    );
+  } else if (isPending) {
+    body = (
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Skeleton className="h-24 rounded-xl bg-console-sidebar" />
+        <Skeleton className="h-24 rounded-xl bg-console-sidebar" />
+        <Skeleton className="h-24 rounded-xl bg-console-sidebar" />
+        <Skeleton className="h-24 rounded-xl bg-console-sidebar" />
       </div>
-    </SiteShell>
+    );
+  } else if (!canManage) {
+    body = (
+      <Panel>
+        <div className="px-6 py-16 text-center">
+          <p className="text-sm text-console-nav">请先登录后再使用这一页。</p>
+          <div className="mx-auto mt-6 flex max-w-xs justify-center">
+            <SignInButtons />
+          </div>
+        </div>
+      </Panel>
+    );
+  } else if (dash) {
+    body = (
+      <ConsoleBody
+        section={section}
+        dash={dash}
+        files={files}
+        members={members}
+        busy={busy}
+        onRefresh={() => void refresh()}
+        onStatus={onStatus}
+        onFeatured={onFeatured}
+        onDeletePost={onDeletePost}
+        onRestore={onRestore}
+        onPurge={onPurge}
+        onDeleteFile={onDeleteFile}
+        onUpload={onUpload}
+        onRole={onRole}
+        onGrant={onGrant}
+        onRevoke={onRevoke}
+        onCreateCode={onCreateCode}
+        onDeleteComment={onDeleteComment}
+      />
+    );
+  }
+
+  return (
+    <ConsoleShell
+      section={section}
+      userName={userName}
+      role={role}
+      posts={dash?.posts ?? posts}
+      onRefresh={() => void refresh()}
+    >
+      {body}
+    </ConsoleShell>
   );
 }
 
-function Stat({
-  icon: Icon,
-  label,
-  value,
+function ConsoleBody({
+  section,
+  dash,
+  files,
+  members,
+  busy,
+  onRefresh,
+  onStatus,
+  onFeatured,
+  onDeletePost,
+  onRestore,
+  onPurge,
+  onDeleteFile,
+  onUpload,
+  onRole,
+  onGrant,
+  onRevoke,
+  onCreateCode,
+  onDeleteComment,
 }: {
-  icon: typeof FileText;
-  label: string;
-  value: number;
+  section: ConsoleSection;
+  dash: AuthorDashboard;
+  files: AttachmentItem[];
+  members: { subscribers: SubscriberRow[]; codes: RedeemCodeRow[] };
+  busy: string | null;
+  onRefresh: () => void;
+  onStatus: (id: number, status: "draft" | "published") => void;
+  onFeatured: (id: number, featured: boolean) => void;
+  onDeletePost: (id: number) => void;
+  onRestore: (id: number) => void;
+  onPurge: (id: number) => void;
+  onDeleteFile: (id: number) => void;
+  onUpload: (file: File | undefined) => void;
+  onRole: (userId: string, role: Role) => void;
+  onGrant: (userId: string) => void;
+  onRevoke: (userId: string) => void;
+  onCreateCode: () => void;
+  onDeleteComment: (id: number) => void;
 }) {
-  return (
-    <div className="rounded-xl bg-card p-4 shadow-md">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className="size-4" />
-        <span className="text-sm">{label}</span>
+  if (section === "dashboard") {
+    return <ConsoleDashboard dash={dash} onRefresh={onRefresh} refreshing={busy !== null} />;
+  }
+
+  if (section === "posts") {
+    return (
+      <Panel
+        extra={
+          <Button asChild size="sm">
+            <Link to="/write">写文章</Link>
+          </Button>
+        }
+      >
+        {dash.posts.length === 0 ? (
+          <Empty text="还没有文章。从一篇短的开始。" />
+        ) : (
+          <ul className="divide-y divide-console-line">
+            {dash.posts.map((post) => (
+              <li key={post.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="font-medium">
+                    <Link to="/posts/$slug" params={{ slug: post.slug }} className="hover:text-console-brand">
+                      {post.title}
+                    </Link>
+                  </p>
+                  <p className="mt-1 text-xs text-console-muted">
+                    {post.topic} · {post.status === "published" ? "已发布" : "草稿"}
+                    {post.exclusive ? ` · ${ACCESS_LABEL[post.accessMode]}` : ""}
+                    {post.updatedAt ? ` · ${formatZhDate(post.updatedAt)}` : ""}
+                    {` · ${post.viewCount} 次阅读`}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button asChild size="sm" variant="outline">
+                    <Link to="/write/$id" params={{ id: String(post.id) }}>
+                      编辑
+                    </Link>
+                  </Button>
+                  {post.status === "published" ? (
+                    <Button size="sm" variant="ghost" disabled={busy === `feat-${post.id}`} onClick={() => onFeatured(post.id, !post.featured)}>
+                      {post.featured ? "取消置顶" : "置顶"}
+                    </Button>
+                  ) : null}
+                  {post.status === "published" ? (
+                    <Button size="sm" variant="ghost" disabled={busy === `status-${post.id}`} onClick={() => onStatus(post.id, "draft")}>
+                      撤回
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="ghost" disabled={busy === `status-${post.id}`} onClick={() => onStatus(post.id, "published")}>
+                      发布
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" className="text-destructive" disabled={busy === `del-${post.id}`} onClick={() => onDeletePost(post.id)}>
+                    删除
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+    );
+  }
+
+  if (section === "comments") {
+    return (
+      <Panel>
+        {dash.comments.length === 0 ? (
+          <Empty text="还没有收到评论。" />
+        ) : (
+          <ul className="divide-y divide-console-line">
+            {dash.comments.map((comment) => (
+              <li key={comment.id} className="px-5 py-4">
+                <p className="text-sm">
+                  <span className="font-medium">{comment.authorName}</span>
+                  <span className="text-console-muted"> 评论了 </span>
+                  <Link to="/posts/$slug" params={{ slug: comment.postSlug }} className="text-console-brand hover:underline">
+                    {comment.postTitle}
+                  </Link>
+                </p>
+                <p className="mt-2 text-sm leading-relaxed">{comment.body}</p>
+                <div className="mt-2 flex items-center justify-between">
+                  <time className="text-xs text-console-muted">{formatZhDate(comment.createdAt)}</time>
+                  <button type="button" className="text-xs text-console-muted hover:text-destructive" onClick={() => onDeleteComment(comment.id)}>
+                    删除
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+    );
+  }
+
+  if (section === "files") {
+    return (
+      <Panel
+        extra={
+          <label className="inline-flex h-9 cursor-pointer items-center rounded-md bg-primary px-3 text-sm text-primary-foreground">
+            {busy === "upload" ? "上传中…" : "上传图片"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              disabled={busy === "upload"}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                onUpload(file);
+              }}
+            />
+          </label>
+        }
+      >
+        <p className="px-5 pt-2 text-sm text-console-muted">站点封面与已上传的图片。单张不超过 2 MB。</p>
+        {files.length === 0 ? (
+          <Empty text="还没有附件。" />
+        ) : (
+          <ul className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-3 lg:grid-cols-4">
+            {files.map((item) => (
+              <li key={item.id} className="overflow-hidden rounded-xl bg-console-quick">
+                <img src={item.url} alt={item.alt} className="folio-photo aspect-16/10 w-full object-cover" />
+                <div className="flex items-start justify-between gap-2 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm">{item.alt || item.filename}</p>
+                    <p className="text-xs text-console-muted">
+                      {item.groupName}
+                      {item.backend === "s3" ? " · 对象存储" : item.backend === "pg" ? " · 数据库" : ""}
+                      {item.sizeBytes ? ` · ${formatBytes(item.sizeBytes)}` : ""}
+                    </p>
+                  </div>
+                  {item.stored ? (
+                    <button
+                      type="button"
+                      className="shrink-0 text-xs text-console-muted hover:text-destructive"
+                      disabled={busy === `file-${item.id}`}
+                      onClick={() => onDeleteFile(item.id)}
+                    >
+                      删除
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+    );
+  }
+
+  if (section === "obsidian") {
+    return (
+      <Panel>
+        <div className="p-5">
+          <ObsidianPanel />
+        </div>
+      </Panel>
+    );
+  }
+
+  if (section === "agent") {
+    return (
+      <Panel>
+        <div className="p-5">
+          <McpPanel />
+        </div>
+      </Panel>
+    );
+  }
+
+  if (section === "appearance") {
+    return (
+      <Panel>
+        <div className="p-5">
+          <p className="text-sm text-console-muted">皮肤存在这台设备上，不跟账号走。代码块始终保持深色高亮。</p>
+          <div className="mt-6">
+            <ThemeGallery compact />
+          </div>
+        </div>
+      </Panel>
+    );
+  }
+
+  if (section === "trash") {
+    return (
+      <Panel>
+        {dash.trash.length === 0 ? (
+          <Empty text="回收站是空的。" />
+        ) : (
+          <ul className="divide-y divide-console-line">
+            {dash.trash.map((post) => (
+              <li key={post.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="font-medium">{post.title}</p>
+                  <p className="mt-1 text-xs text-console-muted">
+                    {post.topic} · {post.status === "published" ? "曾发布" : "草稿"}
+                    {post.updatedAt ? ` · ${formatZhDate(post.updatedAt)}` : ""}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" variant="outline" disabled={busy === `restore-${post.id}`} onClick={() => onRestore(post.id)}>
+                    恢复
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-destructive" disabled={busy === `purge-${post.id}`} onClick={() => onPurge(post.id)}>
+                    彻底删除
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
+    );
+  }
+
+  if (section === "members") {
+    if (dash.role !== "admin") {
+      return (
+        <Panel>
+          <Empty text="只有管理员可以管理成员角色。" />
+        </Panel>
+      );
+    }
+    if (dash.members.length === 0) {
+      return (
+        <Panel>
+          <Empty text="还没有其他成员。" />
+        </Panel>
+      );
+    }
+    return (
+      <Panel>
+        <ul className="divide-y divide-console-line">
+          {dash.members.map((member) => (
+            <li key={member.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="font-medium">{member.name}</p>
+                <p className="mt-1 truncate text-xs text-console-muted">{member.email ?? "未填写邮箱"}</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={member.role} onValueChange={(value) => onRole(member.id, value as Role)} disabled={busy === `role-${member.id}`}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLES.map((item) => (
+                      <SelectItem key={item} value={item}>
+                        {ROLE_LABEL[item]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {members.subscribers.some((item) => item.userId === member.id && item.status === "active") ? (
+                  <Button size="sm" variant="ghost" disabled={busy === `revoke-${member.id}`} onClick={() => onRevoke(member.id)}>
+                    取消会员
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" disabled={busy === `grant-${member.id}`} onClick={() => onGrant(member.id)}>
+                    赠送年卡
+                  </Button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </Panel>
+    );
+  }
+
+  if (section === "plans") {
+    if (dash.role !== "admin") {
+      return (
+        <Panel>
+          <Empty text="只有管理员可以管理订阅与兑换码。" />
+        </Panel>
+      );
+    }
+    return (
+      <div className="space-y-4">
+        <Panel>
+          <div className="px-5 py-4">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Sparkles className="size-4 text-console-brand" />
+              订阅
+            </h2>
+          </div>
+          {members.subscribers.length === 0 ? (
+            <Empty text="还没有订阅记录。读者可在会员页开通或兑换。" />
+          ) : (
+            <ul className="divide-y divide-console-line">
+              {members.subscribers.map((item) => (
+                <li key={item.userId} className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium">{item.name}</p>
+                    <p className="mt-1 text-xs text-console-muted">
+                      {item.plan === "monthly" ? "月卡" : item.plan === "yearly" ? "年卡" : "赠送"} · {item.status === "active" ? "有效" : "已失效"}
+                      {item.expiresAt ? ` · 至 ${formatZhDate(item.expiresAt)}` : ""}
+                    </p>
+                  </div>
+                  {item.status === "active" ? (
+                    <Button size="sm" variant="ghost" disabled={busy === `revoke-${item.userId}`} onClick={() => onRevoke(item.userId)}>
+                      取消
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
+        <Panel
+          extra={
+            <Button size="sm" variant="outline" disabled={busy === "code"} onClick={onCreateCode}>
+              生成年卡码
+            </Button>
+          }
+        >
+          <div className="px-5 pt-4">
+            <h2 className="text-sm font-semibold">兑换码</h2>
+          </div>
+          <ul className="divide-y divide-console-line">
+            {members.codes.map((item) => (
+              <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                <code className="font-mono text-xs">{item.code}</code>
+                <span className="text-xs text-console-muted">
+                  {item.usedCount}/{item.maxUses} · {item.days} 天
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
       </div>
-      <p className="mt-2 text-2xl font-semibold tabular-nums">{value}</p>
+    );
+  }
+
+  if (section === "entrance") {
+    return (
+      <Panel>
+        {dash.role !== "admin" ? <Empty text="只有管理员可以设置后台入口。" /> : <div className="p-5"><EntrancePanel /></div>}
+      </Panel>
+    );
+  }
+
+  if (section === "storage") {
+    return (
+      <Panel>
+        {dash.role !== "admin" ? <Empty text="只有管理员可以设置存储。" /> : <div className="p-5"><StoragePanel /></div>}
+      </Panel>
+    );
+  }
+
+  if (section === "backup") {
+    return (
+      <Panel>
+        {dash.role !== "admin" ? <Empty text="只有管理员可以备份站点。" /> : <div className="p-5"><BackupPanel /></div>}
+      </Panel>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Panel>
+        <div className="p-5">
+          <ReleaseBanner />
+          {dash.role !== "admin" ? (
+            <p className="mt-4 text-sm text-console-muted">只有管理员可以修改站点设置。</p>
+          ) : (
+            <div className="mt-2 space-y-10">
+              <section>
+                <h2 className="text-sm font-semibold">后台入口</h2>
+                <div className="mt-3">
+                  <EntrancePanel />
+                </div>
+              </section>
+              <section>
+                <h2 className="text-sm font-semibold">存储</h2>
+                <div className="mt-3">
+                  <StoragePanel />
+                </div>
+              </section>
+              <section>
+                <h2 className="text-sm font-semibold">备份</h2>
+                <div className="mt-3">
+                  <BackupPanel />
+                </div>
+              </section>
+            </div>
+          )}
+        </div>
+      </Panel>
     </div>
   );
+}
+
+function publicDash(posts: PostListItem[]): AuthorDashboard {
+  return {
+    role: "admin",
+    postCount: posts.length,
+    draftCount: 0,
+    publishedCount: posts.length,
+    commentCount: 0,
+    likeCount: 0,
+    posts,
+    comments: [],
+    trash: [],
+    members: [],
+  };
+}
+
+function Panel({ extra, children }: { extra?: ReactNode; children: ReactNode }) {
+  return (
+    <section className="overflow-hidden rounded-xl bg-console-sidebar shadow-[0_1px_2px_var(--color-console-shadow)]">
+      {extra ? <div className="flex justify-end px-5 pt-4">{extra}</div> : null}
+      {children}
+    </section>
+  );
+}
+
+function Empty({ text }: { text: string }) {
+  return <p className="px-5 py-10 text-sm text-console-muted">{text}</p>;
 }
 
 function formatBytes(n: number) {

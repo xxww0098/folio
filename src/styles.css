@@ -48,6 +48,21 @@
   --color-ink: var(--foreground);
   --color-pine: var(--primary);
   --color-rule: var(--border);
+  --color-console-canvas: #f3f4f8;
+  --color-console-sidebar: #ffffff;
+  --color-console-brand: #3370ff;
+  --color-console-mint: #3dcdc0;
+  --color-console-mint-soft: #e7f8f5;
+  --color-console-ink: #1d2129;
+  --color-console-muted: #86909c;
+  --color-console-nav: #4e5969;
+  --color-console-active: #f2f3f5;
+  --color-console-settings: #1e293b;
+  --color-console-line: #e5e6eb;
+  --color-console-icon: #f2f3f5;
+  --color-console-quick: #f4f8f7;
+  --color-console-shadow: rgb(29 33 41 / 0.04);
+
   --radius-xs: var(--r-xs);
   --radius-sm: var(--r-sm);
   --radius-md: var(--r-md);
@@ -717,6 +732,76 @@
   button:not(:disabled),
   [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+}
+
+.console-app {
+  color-scheme: light;
+  min-height: 100dvh;
+  background: var(--color-console-canvas);
+  color: var(--color-console-ink);
+  font-family: var(--font-sans);
+  --background: #f3f4f8;
+  --foreground: #1d2129;
+  --card: #ffffff;
+  --card-foreground: #1d2129;
+  --popover: #ffffff;
+  --popover-foreground: #1d2129;
+  --primary: #3370ff;
+  --primary-foreground: #ffffff;
+  --secondary: #f2f3f5;
+  --secondary-foreground: #1d2129;
+  --muted: #f2f3f5;
+  --muted-foreground: #86909c;
+  --accent: #e7f8f5;
+  --accent-foreground: #1d2129;
+  --border: #e5e6eb;
+  --input: #e5e6eb;
+  --ring: #3370ff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+}
+
+.console-app a {
+  color: inherit;
+}
+
+.console-nav-item {
+  position: relative;
+}
+
+.console-nav-item[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: -0.75rem;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--color-console-ink);
+}
+
+.console-empty-orbit {
+  width: 9.5rem;
+  height: 4.5rem;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--color-console-mint) 18%, white);
+  filter: blur(2px);
+}
+
+.console-box-spark {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--color-console-ink);
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console-app .console-nav-item,
+  .console-app .console-quick-tile {
+    transition: none;
   }
 }
 
