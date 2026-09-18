@@ -11,6 +11,7 @@
 #   FOLIO_VERSION=v0.1.0 docker compose pull folio && docker compose up -d
 #
 # 镜像：ghcr.io/xxww0098/folio:<tag>
+# 前端入口默认 8011（容器内仍监听 8080）。
 # Postgres 不对外暴露。附件存在数据库里，备份 volume folio-db 即可。
 
 name: folio
@@ -63,14 +64,14 @@ services:
     environment:
       DATABASE_URL: postgres://folio:${POSTGRES_PASSWORD}@postgres:5432/folio
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:8080}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:8011}
       VITE_AUTH_ENABLED: "true"
       VITE_FOLIO_VERSION: ${FOLIO_VERSION:-0.1.0}
       NODE_ENV: production
       HOST: "0.0.0.0"
       PORT: "8080"
     ports:
-      - "${FOLIO_PORT:-8080}:8080"
+      - "${FOLIO_PORT:-8011}:8080"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/api/mcp"]
       interval: 20s

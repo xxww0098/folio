@@ -38,10 +38,10 @@ cp .env.example .env
 
 | 变量 | 说明 |
 | --- | --- |
-| `BETTER_AUTH_URL` | 浏览器访问的 origin。本机 `http://localhost:8080`，公网请用 `https://你的域名` |
+| `BETTER_AUTH_URL` | 浏览器访问的 origin。本机 `http://localhost:8011`，公网请用 `https://你的域名` |
 | `BETTER_AUTH_SECRET` | 会话签名密钥，生产用 `openssl rand -hex 32` |
 | `POSTGRES_PASSWORD` | 数据库密码，不要包含 `@ : / # ?` |
-| `FOLIO_PORT` | 宿主机端口，默认 `8080` |
+| `FOLIO_PORT` | 宿主机前端端口，默认 `8011` |
 | `FOLIO_VERSION` | 镜像 tag。第一次可保持 `latest` |
 
 ```sh
@@ -56,7 +56,7 @@ Caddy 示例：
 
 ```caddy
 blog.example.com {
-  reverse_proxy 127.0.0.1:8080
+  reverse_proxy 127.0.0.1:8011
 }
 ```
 
@@ -131,7 +131,7 @@ npm run test
 | `VITE_FOLIO_EMAIL_PASSWORD` | **构建时** | `"true"` 打开邮箱注册 / 登录（自托管镜像默认打开） |
 | `VITE_FOLIO_VERSION` | **构建时** | 写入前端的版本号，发 Release 时由 CI 填入 |
 | `FOLIO_VERSION` | Compose | 镜像 tag |
-| `FOLIO_PORT` | Compose | 宿主机端口，默认 8080 |
+| `FOLIO_PORT` | Compose | 宿主机前端端口，默认 8011 |
 
 Vite 变量在构建时打进前端，改它们必须重新 `docker compose build`。不要把密钥写进源码或提交 `.env`。
 
