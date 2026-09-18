@@ -21,8 +21,12 @@ PORT="${PORT:-8080}"
 HOST="${HOST:-0.0.0.0}"
 echo "[folio] listening on ${HOST}:${PORT} (version ${VITE_FOLIO_VERSION:-unknown})"
 
+# srvx resolves --static relative to the --entry file unless --dir is set.
+# Passing a cwd-relative static path without --dir 404s every /assets/* file
+# and the UI renders as unstyled HTML (default blue links, no layout).
 exec npx --no-install srvx serve --prod \
   --host "$HOST" \
   --port "$PORT" \
-  --static .vercel/output/static \
+  --dir "$PWD" \
+  --static "$PWD/.vercel/output/static" \
   --entry .vercel/output/functions/__server.func/index.mjs
