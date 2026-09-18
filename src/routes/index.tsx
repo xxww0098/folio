@@ -23,7 +23,7 @@ function Home() {
 
   return (
     <SiteShell posts={posts} tags={tags} recentComments={recentComments} sidebar>
-      <div className="flex flex-wrap gap-2">
+      <div className="folio-flow flex flex-wrap gap-2">
         <span className="inline-flex h-9 items-center rounded-full bg-card px-3 text-sm font-medium shadow-md">
           全部
         </span>
@@ -32,13 +32,13 @@ function Home() {
             key={topic}
             to="/topics/$topic"
             params={{ topic }}
-            className="inline-flex h-9 items-center rounded-full bg-card px-3 font-mono text-xs text-muted-foreground shadow-md hover:text-foreground"
+            className="inline-flex h-9 items-center rounded-full bg-card px-3 font-mono text-xs text-muted-foreground shadow-md transition-[color,transform] duration-150 ease-out hover:text-foreground active:scale-[0.96]"
           >
             {topic}
           </Link>
         ))}
       </div>
-      <div className="mt-6 grid grid-cols-1 gap-6">
+      <div className="folio-flow mt-6 grid grid-cols-1 gap-6">
         {slice.map((post) => (
           <ArticleCard key={post.id} post={post} />
         ))}

@@ -14,6 +14,9 @@ until node scripts/migrate.mjs; do
   sleep 2
 done
 
+echo "[folio] checking backend entrance…"
+node scripts/ensure-entrance.mjs
+
 PORT="${PORT:-8080}"
 HOST="${HOST:-0.0.0.0}"
 echo "[folio] listening on ${HOST}:${PORT} (version ${VITE_FOLIO_VERSION:-unknown})"

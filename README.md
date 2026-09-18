@@ -21,6 +21,7 @@
 - Obsidian 插件：个人令牌发布、拉回、上传图片
 - MCP：写作 Agent 远程列稿、改稿、推送（`/api/mcp`，同一类 `folio_` 令牌）
 - 六套内置主题，顶栏切换
+- 后台入口：控制台可设一段秘密路径；开启后直接打开 `/console` 显示成普通 404
 
 ## 用 Docker 自托管
 
@@ -46,9 +47,10 @@ cp .env.example .env
 
 ```sh
 docker compose up -d --build
+docker compose logs folio
 ```
 
-打开 `BETTER_AUTH_URL`。第一次注册的邮箱账号自动成为管理员。
+日志里会打印 **后台入口** 的完整地址（首次启动当场生成并写入数据库）。打开那条路径才能进控制台；直接访问 `/console` 会显示普通 404。第一次注册的邮箱账号自动成为管理员。
 
 生产请把站点放在 HTTPS 反向代理后面。会话 Cookie 用 `__Host-` 前缀：本机 `localhost` 可以用 HTTP，公网必须 HTTPS。
 
@@ -76,8 +78,8 @@ blog.example.com {
 脚本会把 `.env` 里的 `FOLIO_VERSION` 写成最新 tag，再 `docker compose pull && up`。指定版本：
 
 ```sh
-FOLIO_VERSION=v0.1.0 docker compose pull folio
-FOLIO_VERSION=v0.1.0 docker compose up -d
+FOLIO_VERSION=v0.1.1 docker compose pull folio
+FOLIO_VERSION=v0.1.1 docker compose up -d
 ```
 
 控制台页会显示当前版本；GitHub 上有更新时会提示跑上面的脚本。

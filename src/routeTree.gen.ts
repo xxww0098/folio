@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EntryRouteImport } from './routes/$entry'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as ArchiveRouteImport } from './routes/archive'
 import { Route as CategoriesRouteImport } from './routes/categories'
@@ -42,6 +43,11 @@ import { Route as ApiObsidianPostsSlugRouteImport } from './routes/api/obsidian/
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EntryRoute = EntryRouteImport.update({
+  id: '/$entry',
+  path: '/$entry',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -187,6 +193,7 @@ const ApiObsidianPostsSlugRoute = ApiObsidianPostsSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$entry': typeof EntryRoute
   '/about': typeof AboutRoute
   '/archive': typeof ArchiveRoute
   '/categories': typeof CategoriesRoute
@@ -218,6 +225,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$entry': typeof EntryRoute
   '/about': typeof AboutRoute
   '/archive': typeof ArchiveRoute
   '/categories': typeof CategoriesRoute
@@ -250,6 +258,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$entry': typeof EntryRoute
   '/about': typeof AboutRoute
   '/archive': typeof ArchiveRoute
   '/categories': typeof CategoriesRoute
@@ -283,6 +292,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$entry'
     | '/about'
     | '/archive'
     | '/categories'
@@ -314,6 +324,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$entry'
     | '/about'
     | '/archive'
     | '/categories'
@@ -345,6 +356,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/$entry'
     | '/about'
     | '/archive'
     | '/categories'
@@ -377,6 +389,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  EntryRoute: typeof EntryRoute
   AboutRoute: typeof AboutRoute
   ArchiveRoute: typeof ArchiveRoute
   CategoriesRoute: typeof CategoriesRoute
@@ -411,6 +424,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$entry': {
+      id: '/$entry'
+      path: '/$entry'
+      fullPath: '/$entry'
+      preLoaderRoute: typeof EntryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -645,6 +665,7 @@ const ApiObsidianPostsRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  EntryRoute: EntryRoute,
   AboutRoute: AboutRoute,
   ArchiveRoute: ArchiveRoute,
   CategoriesRoute: CategoriesRoute,

@@ -75,10 +75,7 @@ export function ThemeToggle() {
                     />
                   ))}
                 </span>
-                <span>
-                  <span className="block text-sm">{theme.name}</span>
-                  <span className="block text-xs text-muted-foreground">{theme.tagline}</span>
-                </span>
+                <span className="block text-sm">{theme.name}</span>
               </span>
               {active ? <Check className="size-4 text-primary" /> : null}
             </DropdownMenuItem>
@@ -87,7 +84,7 @@ export function ThemeToggle() {
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link to="/themes" className="text-muted-foreground">
-            浏览全部主题
+            全部主题
           </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

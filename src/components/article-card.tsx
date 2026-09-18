@@ -37,7 +37,7 @@ export function ArticleCard({
   return (
     <article
       className={cn(
-        "group overflow-hidden rounded-xl bg-card shadow-md ring-1 ring-transparent transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-lg hover:ring-foreground/10",
+        "group overflow-hidden rounded-xl bg-card shadow-md",
         horizontal && "grid grid-cols-1 sm:grid-cols-5",
       )}
     >
@@ -45,12 +45,12 @@ export function ArticleCard({
         <Link
           to="/posts/$slug"
           params={{ slug: post.slug }}
-          className={cn("relative block overflow-hidden", horizontal && "sm:col-span-2")}
+          className={cn("relative block overflow-hidden [perspective:900px]", horizontal && "sm:col-span-2")}
         >
           <img
             src={post.coverImage}
             alt={post.coverAlt ?? post.title}
-            className="aspect-16/10 size-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+            className="folio-cover aspect-16/10 size-full object-cover"
           />
         </Link>
       ) : null}
@@ -70,16 +70,6 @@ export function ArticleCard({
               {post.topic}
             </Link>
             <AccessBadge mode={post.accessMode} exclusive={post.exclusive} publicAt={post.publicAt} />
-            {(post.tags ?? []).slice(0, 2).map((tag) => (
-              <Link
-                key={tag.slug}
-                to="/tags/$tag"
-                params={{ tag: tag.slug }}
-                className="text-sm italic text-muted-foreground hover:text-primary"
-              >
-                #{tag.name}
-              </Link>
-            ))}
           </div>
           <h2 className="text-lg font-semibold leading-snug">
             <Link to="/posts/$slug" params={{ slug: post.slug }} className="hover:text-primary">
