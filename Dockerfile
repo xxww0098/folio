@@ -1,11 +1,13 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-bookworm-slim AS deps
+# JS build is arch-independent. Run it on the host arch (BUILDPLATFORM) so
+# GitHub Actions does not qemu-emulate npm / vite for linux/arm64.
+FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM node:22-bookworm-slim AS build
+FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -14,7 +16,8 @@ ARG VITE_FOLIO_EMAIL_PASSWORD=true
 ARG VITE_FOLIO_VERSION=0.1.0
 ENV VITE_AUTH_ENABLED=$VITE_AUTH_ENABLED \
     VITE_FOLIO_EMAIL_PASSWORD=$VITE_FOLIO_EMAIL_PASSWORD \
-    VITE_FOLIO_VERSION=$VITE_FOLIO_VERSION
+    VITE_FOLIO_VERSION=$VITE_FOLIO_VERSION \
+    PATH="/app/node_modules/.bin:$PATH"
 RUN node scripts/with-app-env.mjs vite build
 
 FROM node:22-bookworm-slim AS prod-deps
