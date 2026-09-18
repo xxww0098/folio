@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, ReactNodeViewRenderer, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -19,7 +19,14 @@ import {
 import { htmlToMarkdown, markdownToHtml } from "@/lib/blog/html";
 import { parseWikiInner, resolveWikiTarget, wikiDisplay, type WikiCatalogItem } from "@/lib/blog/wikilink";
 import { Button } from "@/components/ui/button";
+import { EditorImageView } from "@/components/editor-image";
 import { cn } from "@/lib/utils";
+
+const EditorImage = Image.extend({
+  addNodeView() {
+    return ReactNodeViewRenderer(EditorImageView);
+  },
+});
 
 export function VisualEditor({
   value,
@@ -38,7 +45,7 @@ export function VisualEditor({
         heading: { levels: [2, 3] },
         codeBlock: { languageClassPrefix: "language-" },
       }),
-      Image.configure({ inline: false, allowBase64: false }),
+      EditorImage.configure({ inline: false, allowBase64: false }),
       Link.configure({ openOnClick: false, autolink: true }),
       Placeholder.configure({ placeholder: "开始写技术文章。代码块请标明语言，例如 ts / rust / go。" }),
     ],

@@ -593,6 +593,79 @@
   max-width: 100%;
   margin: 1rem 0;
 }
+.folio-editor-image {
+  position: relative;
+  display: block;
+  margin: 1rem 0;
+}
+.folio-editor-image img {
+  display: block;
+  width: 100%;
+  margin: 0;
+  border-radius: var(--r-md);
+}
+.folio-editor-image.is-selected img {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.folio-editor-image-action {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 2;
+  min-height: 2.75rem;
+  border-radius: var(--r-sm);
+  background: var(--card);
+  color: var(--card-foreground);
+  padding: 0 0.85rem;
+  font-size: 0.75rem;
+  box-shadow: var(--shadow-border);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+.folio-editor-image:hover .folio-editor-image-action,
+.folio-editor-image:focus-within .folio-editor-image-action,
+.folio-editor-image.is-selected .folio-editor-image-action {
+  opacity: 1;
+  transform: none;
+}
+.folio-editor-image-action:disabled {
+  opacity: 0.6;
+}
+.folio-editor-image-menu {
+  position: fixed;
+  z-index: 50;
+  min-width: 11rem;
+  border-radius: var(--r-md);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  padding: 0.25rem;
+  box-shadow: var(--shadow-border);
+}
+.folio-editor-image-menu button,
+.folio-editor-image-menu p {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  border-radius: var(--r-sm);
+  padding: 0 0.75rem;
+  text-align: left;
+  font-size: 0.875rem;
+  line-height: 2.75rem;
+}
+.folio-editor-image-menu button:hover,
+.folio-editor-image-menu button:focus-visible {
+  background: var(--secondary);
+}
+.folio-editor-image-menu p {
+  color: var(--muted-foreground);
+}
+@media (prefers-reduced-motion: reduce) {
+  .folio-editor-image-action {
+    transition: none;
+  }
+}
 .tiptap a {
   color: var(--primary);
   text-underline-offset: 4px;
