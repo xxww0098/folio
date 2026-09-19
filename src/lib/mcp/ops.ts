@@ -75,7 +75,7 @@ export async function callTool(
   ]);
   if (writeTools.has(name)) {
     const actor = await getActor(ctx.userId);
-    if (!actor.canWrite) return jsonResult({ error: "没有投稿权限" }, true);
+    if (!actor.canWrite) return jsonResult({ error: "没有权限" }, true);
   }
   switch (name) {
     case "whoami":

@@ -6,7 +6,7 @@ export const GITHUB_RELEASES_URL = `${GITHUB_URL}/releases`;
 export const GHCR_IMAGE = `ghcr.io/${GITHUB_REPO_SLUG}`;
 
 export const CURRENT_VERSION =
-  (typeof import.meta !== "undefined" && import.meta.env?.VITE_FOLIO_VERSION) || "0.1.4";
+  (typeof import.meta !== "undefined" && import.meta.env?.VITE_FOLIO_VERSION) || "0.1.5";
 
 export type GithubRelease = {
   tag: string;

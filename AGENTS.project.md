@@ -6,7 +6,7 @@ Agent 指南，不是给人看的 README。改代码前读完本文件。
 ## Product
 
 技术向中文独立博客。栏目按语言/主题：`TypeScript` `Rust` `Go` `Python` `SQL` `Zig` `架构`。
-公开阅读，登录后可投稿、评论、发瞬间、管附件。深色顶栏、横向封面卡、右侧边栏。
+公开阅读。登录后可评论、开通会员阅读付费文章。写稿只在控制台，由站长完成，不要设计用户投稿。深色顶栏、横向封面卡、右侧边栏。
 
 默认语气：工程师写给工程师。短句、可运行的代码、少口号。界面文案用中文。
 
@@ -76,7 +76,7 @@ public/obsidian-folio/   Obsidian 插件（manifest / main.js / styles.css）
 Auth **开**。Postgres：有 `DATABASE_URL` 用 Neon，否则 PGLite。
 
 - 登录用户第一人自动 `admin`，其余默认 `reader`（普通用户）。登录页可邮箱注册。Docker 首次启动 `scripts/ensure-admin.mjs` 创建 credential 管理员（可用 `FOLIO_ADMIN_EMAIL` / `FOLIO_ADMIN_PASSWORD` 覆盖）；已有用户则不改密码。
-- 登录用户第一人自动 `admin`，其余默认 `reader`。admin 可把用户升为 author / editor。editor 可改他人稿，admin 可改角色。`/console` 给 author 及以上；`/me` 给普通用户。
+- 登录用户第一人自动 `admin`，其余默认 `reader`。写稿只给 admin / editor。`/console` 给站长；`/me` 给读者（评论、会员）。不要做用户投稿。
 - 文章软删 `deleted_at`，公开查询必须排除。
 - 不要新建 `.env`。不要把密钥写进源码。
 - 不要在公开 server function 里做清空表、批量覆盖。
@@ -175,7 +175,7 @@ npm run check:auth
 | Agent MCP | `src/lib/mcp/` + `/api/mcp`（Streamable HTTP，同一 PAT）；说明页 `/mcp`；新工具加在 `catalog.ts` 并在 `ops.ts` 实现 |
 | Docker / Release | `Dockerfile` + `docker-compose.yml`；版本来自 GitHub Release（`v*` tag → GHCR + Release）；升级跑 `scripts/update-from-release.sh` |
 | 后台入口 | `src/lib/entrance/` + `migrations/0008_entrance.sql`；Docker 首次启动 `scripts/ensure-init.mjs` 生成入口并打印到终端；空字符串关闭；`/$entry` 解锁并写 `folio_entrance`；公开页、`/login`、`/me`、`/write`、MCP / Obsidian PAT 不拦。`/console` 仅 editor/admin |
-| 站长账户 | `scripts/ensure-admin.mjs`；无用户时创建管理员。公开注册在登录页；新用户默认 reader。`/console` 作者与管理员；`/me` 普通用户个人中心。`migrations/0011_open_signup.sql` 取消单账户限制 |
+| 站长账户 | `scripts/ensure-admin.mjs`；无用户时创建管理员。公开注册在登录页；新用户默认 reader，用来评论和开会员。写稿只在 `/console`。`migrations/0011_open_signup.sql` 取消单账户限制 |
 | 备份 / 搬家 | `scripts/backup.mjs` + 控制台「备份」；导出 JSON（含附件 bytea）；导入覆盖全站，跳过 session；CLI 同格式 |
 | 新皮肤 | `catalog.ts` 加一项 + `styles.css` 写 light/dark 两套 token；预览色只放 catalog swatch |
 

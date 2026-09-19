@@ -103,7 +103,7 @@ export function ConsoleShell({
             <Link
               to={home}
               search={{ section: "settings" }}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-console-settings px-3 text-sm font-medium text-console-sidebar transition-opacity duration-150 hover:opacity-90"
+              className="console-cta inline-flex h-9 items-center gap-1.5 rounded-lg bg-console-settings px-3 text-sm font-medium text-white transition-opacity duration-150 hover:opacity-90"
             >
               <Settings className="size-4" />
               设置

@@ -1,15 +1,23 @@
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Navigate, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getPostForEdit, listPublishedPosts } from "@/lib/blog/server";
 import { getWorkspaceAccess } from "@/lib/entrance/server";
 import type { PostDetail } from "@/lib/blog/types";
 import { SiteShell } from "@/components/site-shell";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WriteForm } from "@/components/write-form";
 
 export const Route = createFileRoute("/write/$id")({
+  beforeLoad: async ({ params }) => {
+    const access = await getWorkspaceAccess();
+    if (!access.signedIn) {
+      throw redirect({ to: "/login", search: { next: `/write/${params.id}` } });
+    }
+    if (!access.canWrite) {
+      throw redirect({ to: "/me" });
+    }
+  },
   loader: () => listPublishedPosts(),
   head: () => ({ meta: [{ title: "编辑文章 - 折页" }] }),
   component: EditPage,
@@ -58,15 +66,8 @@ function EditPage() {
         <h1 className="mb-8 text-2xl font-semibold tracking-tight">编辑文章</h1>
         {isPending || (user && (canWrite === null || post === undefined)) ? (
           <Skeleton className="h-96 w-full" />
-        ) : !user ? (
-          <Navigate to="/login" search={{ next: `/write/${id}` }} />
-        ) : !canWrite ? (
-          <div className="rounded-xl bg-card p-8 shadow-md">
-            <p className="text-sm text-muted-foreground">编辑文章需要作者身份。</p>
-            <Button asChild className="mt-4">
-              <Link to="/me">去个人中心</Link>
-            </Button>
-          </div>
+        ) : !user || !canWrite ? (
+          <Navigate to="/me" />
         ) : post ? (
           <WriteForm post={post} />
         ) : (

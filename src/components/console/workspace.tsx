@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState, type ReactNode } from "react";
@@ -310,22 +310,7 @@ export function WorkspaceApp({
       </div>
     );
   } else if (!user) {
-    body = (
-      <Panel>
-        <div className="px-6 py-16 text-center">
-          <p className="text-sm text-console-nav">
-            {area === "console" ? "请先登录作者或管理员账号。" : "请先登录后再使用个人中心。"}
-          </p>
-          <div className="mx-auto mt-6 flex max-w-xs justify-center">
-            <Button asChild>
-              <Link to="/login" search={{ next: loginNext }}>
-                去登录
-              </Link>
-            </Button>
-          </div>
-        </div>
-      </Panel>
-    );
+    return <Navigate to="/login" search={{ next: loginNext }} />;
   } else if (dash && section === "dashboard") {
     body = (
       <ConsoleDashboard
@@ -419,7 +404,7 @@ function ConsoleBody({
   if (area === "me" && !(ME_SECTIONS as readonly string[]).includes(section)) {
     return (
       <Panel>
-        <Empty text="站点管理和写稿在控制台。这里只看你的评论和账户。" />
+        <Empty text="站点管理在控制台。这里只看你的评论、会员和账户。" />
       </Panel>
     );
   }
@@ -794,8 +779,8 @@ function ConsoleBody({
             <p className="mt-2 text-sm text-console-muted">
               当前身份：{ROLE_LABEL[dash.role]}。
               {canWriteRole(dash.role)
-                ? "写稿请到控制台。这里只看你的评论和账户。"
-                : "注册用户可以评论、开会员。投稿需管理员把你设为作者。"}
+                ? "写稿请到控制台。这里只看你的评论、会员和账户。"
+                : "注册用户可以评论、开通会员阅读付费文章。"}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

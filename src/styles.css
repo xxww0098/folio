@@ -766,6 +766,10 @@
   color: inherit;
 }
 
+.console-app a.console-cta {
+  color: #fff;
+}
+
 .console-nav-item {
   position: relative;
 }
