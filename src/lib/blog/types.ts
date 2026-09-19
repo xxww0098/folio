@@ -3,8 +3,9 @@ import type { AccessGate, AccessMode } from "@/lib/membership/access";
 import type { FrontPageFlags } from "@/lib/pages/visibility";
 import type { WikiGraph } from "./wikilink";
 
-export const TOPICS = ["TypeScript", "Rust", "Go", "Python", "SQL", "Zig", "架构"] as const;
-export type Topic = (typeof TOPICS)[number];
+export const DEFAULT_TOPICS = ["TypeScript", "Rust", "Go", "Python", "SQL", "Zig", "架构"] as const;
+export const TOPICS = DEFAULT_TOPICS;
+export type Topic = string;
 
 export const POST_STATUSES = ["draft", "published"] as const;
 export type PostStatus = (typeof POST_STATUSES)[number];
@@ -113,10 +114,11 @@ export type SiteChrome = {
   tags: Array<TagRef & { count: number }>;
   recentComments: RecentComment[];
   pages: FrontPageFlags;
+  topics: string[];
 };
 
-export function isTopic(value: string): value is Topic {
-  return (TOPICS as readonly string[]).includes(value);
+export function isTopic(value: string, allowed: readonly string[] = DEFAULT_TOPICS): value is Topic {
+  return allowed.includes(value);
 }
 
 export function readingMinutesFromBody(body: string): number {

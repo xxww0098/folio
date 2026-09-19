@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { EditorContent, ReactNodeViewRenderer, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -18,10 +18,14 @@ import {
   Quote,
 } from "lucide-react";
 import { htmlToMarkdown, markdownToHtml } from "@/lib/blog/html";
-import { markdownEditorExtension } from "@/lib/blog/markdown-editor";
+import { markdownEditorExtension, type WikiTrigger } from "@/lib/blog/markdown-editor";
+import { VideoEmbedNode } from "@/lib/blog/video-node";
 import { parseWikiInner, resolveWikiTarget, wikiDisplay, type WikiCatalogItem } from "@/lib/blog/wikilink";
+import { WikiSuggestMenu } from "@/components/wiki-suggest-menu";
 import { Button } from "@/components/ui/button";
 import { EditorImageView } from "@/components/editor-image";
+import { uploadAttachment } from "@/lib/attachments/server";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const EditorImage = Image.extend({
@@ -29,6 +33,31 @@ const EditorImage = Image.extend({
     return ReactNodeViewRenderer(EditorImageView);
   },
 });
+
+function isImageFile(file: File) {
+  return file.type.startsWith("image/") || /\.(gif|png|jpe?g|webp)$/i.test(file.name);
+}
+
+function readDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("读取失败"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadEditorImage(file: File) {
+  const dataBase64 = await readDataUrl(file);
+  return uploadAttachment({
+    data: {
+      filename: file.name || "image.gif",
+      mimeType: file.type || undefined,
+      dataBase64,
+      alt: file.name.replace(/\.[^.]+$/, "") || "图片",
+    },
+  });
+}
 
 export function VisualEditor({
   value,
@@ -45,6 +74,10 @@ export function VisualEditor({
 }) {
   const catalogRef = useRef(catalog);
   catalogRef.current = catalog;
+  const triggerCb = useRef<(next: WikiTrigger | null) => void>(() => undefined);
+  const [trigger, setTrigger] = useState<WikiTrigger | null>(null);
+  triggerCb.current = setTrigger;
+  const editorRef = useRef<ReturnType<typeof useEditor>>(null);
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -52,11 +85,12 @@ export function VisualEditor({
         codeBlock: { languageClassPrefix: "language-" },
       }),
       EditorImage.configure({ inline: false, allowBase64: false }),
+      VideoEmbedNode,
       Link.configure({ openOnClick: false, autolink: true }),
       Placeholder.configure({
         placeholder: "开始写正文",
       }),
-      markdownEditorExtension(catalogRef),
+      markdownEditorExtension(catalogRef, triggerCb),
     ],
     content: markdownToHtml(value),
     immediatelyRender: false,
@@ -64,11 +98,40 @@ export function VisualEditor({
       attributes: {
         class: cn("tiptap px-1 py-4 text-lg leading-relaxed outline-none", fill ? "min-h-[calc(100dvh-10rem)]" : "min-h-80 px-4 py-3 text-base"),
       },
+      handlePaste(_view, event) {
+        const current = editorRef.current;
+        const file = [...(event.clipboardData?.files ?? [])].find(isImageFile);
+        if (!file || !current) return false;
+        event.preventDefault();
+        void uploadEditorImage(file)
+          .then((item) => {
+            current.chain().focus().setImage({ src: item.url, alt: item.alt || item.filename }).run();
+          })
+          .catch((error: unknown) => {
+            toast.error(error instanceof Error ? error.message : "图片上传失败");
+          });
+        return true;
+      },
+      handleDrop(_view, event) {
+        const current = editorRef.current;
+        const file = [...(event.dataTransfer?.files ?? [])].find(isImageFile);
+        if (!file || !current) return false;
+        event.preventDefault();
+        void uploadEditorImage(file)
+          .then((item) => {
+            current.chain().focus().setImage({ src: item.url, alt: item.alt || item.filename }).run();
+          })
+          .catch((error: unknown) => {
+            toast.error(error instanceof Error ? error.message : "图片上传失败");
+          });
+        return true;
+      },
     },
     onUpdate: ({ editor: current }) => {
       onChange(htmlToMarkdown(current.getHTML()));
     },
   });
+  editorRef.current = editor;
 
   useEffect(() => {
     if (!editor) return;
@@ -101,14 +164,11 @@ export function VisualEditor({
     editor.chain().focus().extendMarkRange("link").setLink({ href }).run();
   }
 
-  function insertWiki() {
+  function insertWikiToken(inner: string, range?: { from: number; to: number }) {
     if (!editor) return;
-    const inner = window.prompt("要链接的文章", "");
-    if (inner === null) return;
-    const token = inner.trim();
-    if (!token) return;
-    const link = parseWikiInner(token);
-    const note = link.target ? resolveWikiTarget(link.target, catalog) : undefined;
+    const catalogNow = catalogRef.current;
+    const link = parseWikiInner(inner);
+    const note = link.target ? resolveWikiTarget(link.target, catalogNow) : undefined;
     const href = note
       ? `/posts/${note.slug}`
       : link.target
@@ -116,10 +176,18 @@ export function VisualEditor({
         : link.heading
           ? `#${link.heading}`
           : "#";
-    const label = wikiDisplay(link) || note?.title || token;
-    const wiki = token.replace(/&/g, "\u0026amp;").replace(/"/g, "\u0026quot;").replace(/</g, "\u0026lt;");
+    const label = wikiDisplay(link) || note?.title || inner;
+    const wiki = inner.replace(/&/g, "\u0026amp;").replace(/"/g, "\u0026quot;").replace(/</g, "\u0026lt;");
     const text = label.replace(/&/g, "\u0026amp;").replace(/</g, "\u0026lt;");
-    editor.chain().focus().insertContent(`<a href="${href}" data-wiki="${wiki}">${text}</a>`).run();
+    const chain = editor.chain().focus();
+    if (range) chain.deleteRange(range);
+    chain.insertContent(`<a href="${href}" data-wiki="${wiki}">${text}</a>`).run();
+    setTrigger(null);
+  }
+
+  function insertWiki() {
+    if (!editor) return;
+    editor.chain().focus().insertContent("[[").run();
   }
 
   if (!editor) {
@@ -172,7 +240,19 @@ export function VisualEditor({
           </Tool>
         ) : null}
       </div>
-      <EditorContent editor={editor} />
+      <div className="relative">
+        <EditorContent editor={editor} />
+        {trigger ? (
+          <div className="absolute left-0 right-0 z-20 mt-1 max-w-md px-1">
+            <WikiSuggestMenu
+              query={trigger.query}
+              catalog={catalog}
+              onPick={(hit) => insertWikiToken(hit.inner, trigger)}
+              onClose={() => setTrigger(null)}
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

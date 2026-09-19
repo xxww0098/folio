@@ -20,7 +20,7 @@ export const MCP_TOOLS: ToolDef[] = [
   },
   {
     name: "list_posts",
-    description: "列出当前用户可管理的文章（作者看自己的，编辑/管理员看全部）。",
+    description: "列出当前用户可管理的文章。管理员看全部。",
     inputSchema: {
       type: "object",
       properties: {
@@ -140,7 +140,7 @@ export const MCP_TOOLS: ToolDef[] = [
   },
   {
     name: "list_topics",
-    description: "列出站点栏目，写文章时 topic 必须是其中之一。",
+    description: "列出当前站点分类。写文章时 topic 必须是其中之一。",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
@@ -168,6 +168,165 @@ export const MCP_TOOLS: ToolDef[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "site_overview",
+    description: "站点总览：文章数量、评论、用户、瞬间、前台栏目开关、分类。",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "list_comments",
+    description: "列出最近评论，或按文章 slug 过滤。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        slug: stringProp("只看这篇文章的评论"),
+        limit: { type: "integer", minimum: 1, maximum: 80, description: "默认 30" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "add_comment",
+    description: "以当前令牌用户发表或回复评论。文章须已发布。",
+    inputSchema: {
+      type: "object",
+      required: ["body"],
+      properties: {
+        slug: stringProp("文章别名，与 postId 二选一"),
+        postId: { type: "integer", description: "文章数字 id" },
+        body: stringProp("评论正文，2–1000 字"),
+        parentId: { type: "integer", description: "回复哪条评论" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "delete_comment",
+    description: "删除一条评论。管理员可删任意，其他人只能删自己的。",
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: { id: { type: "integer", description: "评论 id" } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_moments",
+    description: "列出站点瞬间，按时间倒序。",
+    inputSchema: {
+      type: "object",
+      properties: { limit: { type: "integer", minimum: 1, maximum: 40, description: "默认 20" } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "create_moment",
+    description: "发一条瞬间，最多 280 字。",
+    inputSchema: {
+      type: "object",
+      required: ["body"],
+      properties: { body: stringProp("瞬间正文") },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "delete_moment",
+    description: "删除一条瞬间。仅管理员。",
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: { id: { type: "integer" } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_links",
+    description: "列出全部友链，含分组。",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "create_link",
+    description: "添加友链。仅管理员。",
+    inputSchema: {
+      type: "object",
+      required: ["name", "url"],
+      properties: {
+        name: stringProp("站点名"),
+        url: stringProp("https 地址"),
+        description: stringProp("一句话"),
+        groupName: stringProp("分组，默认 阅读"),
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "delete_link",
+    description: "删除友链。仅管理员。",
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: { id: { type: "integer" } },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_photos",
+    description: "列出图库里的图片。",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "create_photo",
+    description: "把已上传的图片加入图库。image 用 upload_image 返回的 URL。仅管理员。",
+    inputSchema: {
+      type: "object",
+      required: ["title", "image"],
+      properties: {
+        title: stringProp("标题"),
+        image: stringProp("图片 URL"),
+        description: stringProp("说明"),
+        groupName: stringProp("分组，默认 日常"),
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_pages",
+    description: "前台栏目开关：瞬间、图库、归档、友链。",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "set_front_page",
+    description: "打开或关闭某个前台栏目。仅管理员。",
+    inputSchema: {
+      type: "object",
+      required: ["page", "visible"],
+      properties: {
+        page: { type: "string", enum: ["moments", "photos", "archive", "links"] },
+        visible: { type: "boolean" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "add_topic",
+    description: "新增分类。仅管理员。",
+    inputSchema: {
+      type: "object",
+      required: ["name"],
+      properties: { name: stringProp("分类名，最多 20 字") },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_revision",
+    description: "读取文章某个历史版本的正文。",
+    inputSchema: {
+      type: "object",
+      required: ["id"],
+      properties: { id: { type: "integer", description: "list_revisions 返回的版本 id" } },
+      additionalProperties: false,
+    },
+  },
 ];
 
 export const MCP_PROMPTS: PromptDef[] = [
@@ -187,6 +346,19 @@ export const MCP_PROMPTS: PromptDef[] = [
       { name: "slug", description: "要改的文章别名", required: true },
       { name: "instruction", description: "怎么改", required: true },
     ],
+  },
+  {
+    name: "reply_to_comment",
+    description: "根据最近评论起草一条回复，写完调用 add_comment。",
+    arguments: [
+      { name: "slug", description: "文章别名", required: true },
+      { name: "commentId", description: "要回复的评论 id", required: false },
+    ],
+  },
+  {
+    name: "write_moment",
+    description: "把一件工程上的小事写成瞬间（不超过 280 字），写完调用 create_moment。",
+    arguments: [{ name: "note", description: "发生了什么", required: true }],
   },
 ];
 

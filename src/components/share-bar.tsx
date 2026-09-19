@@ -1,6 +1,8 @@
 import { Link2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function ShareBar({ title }: { title: string }) {
   const [copied, setCopied] = useState(false);
@@ -27,13 +29,14 @@ export function ShareBar({ title }: { title: string }) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => void copyLink()}
-      className="inline-flex h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
-    >
-      <Link2 className="size-4" />
-      {copied ? "已复制" : "分享"}
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button type="button" variant="ghost" className="h-11 gap-1.5 text-muted-foreground" onClick={() => void copyLink()}>
+          <Link2 className="size-4" />
+          {copied ? "已复制" : "分享"}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>复制链接</TooltipContent>
+    </Tooltip>
   );
 }

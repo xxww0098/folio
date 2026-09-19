@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { displayNameFor } from "@/lib/profile";
-import { ensureAttachmentsSeeded } from "@/lib/attachments/server";
+import { ensureAttachmentsSeeded, sweepGhostAttachmentsQuietly } from "@/lib/attachments/server";
 import { ensureLinksSeeded } from "@/lib/links/server";
 import { getActor, parseRole, ROLES } from "@/lib/roles";
 import { ensureMomentsSeeded } from "@/lib/moments/server";
@@ -18,6 +18,8 @@ import { clampExclusiveDays, isAccessMode, type AccessMode } from "@/lib/members
 import { optionalAuthMiddleware } from "@/lib/membership/session";
 import { getFrontPages } from "@/lib/pages/server";
 import { DEFAULT_FRONT_PAGES } from "@/lib/pages/visibility";
+import { likeContains } from "@/lib/seo";
+import { assertKnownTopic, loadTopics } from "@/lib/topics/server";
 import {
   attachTags,
   ensureSiteExtras,
@@ -27,7 +29,6 @@ import {
 } from "./extras";
 import { buildWikiGraph, extractHeadings, EMPTY_WIKI, type WikiCatalogItem, type WikiGraph } from "./wikilink";
 import {
-  isTopic,
   makeSlug,
   makeStableSlug,
   readingMinutesFromBody,
@@ -95,18 +96,42 @@ function toListItem(row: PostRow): PostListItem {
   };
 }
 
+const SELECT_COUNTS = `
+    coalesce(cc.n, 0)::int as comment_count,
+    coalesce(lc.n, 0)::int as like_count
+  from posts p
+  left join (select post_id, count(*)::int as n from comments group by post_id) cc on cc.post_id = p.id
+  left join (select post_id, count(*)::int as n from post_likes group by post_id) lc on lc.post_id = p.id
+`;
+
 const SELECT_LIST = `
+  select
+    p.id, p.user_id, p.author_name, p.slug, p.title, p.excerpt, ''::text as body,
+    p.cover_image, p.cover_alt, p.topic, p.status, p.reading_minutes,
+    p.featured, p.published_at, p.created_at, p.updated_at, p.view_count, p.allow_comments,
+    p.access_mode, p.exclusive_days,
+    ${SELECT_COUNTS}
+`;
+
+const SELECT_DETAIL = `
   select
     p.id, p.user_id, p.author_name, p.slug, p.title, p.excerpt, p.body,
     p.cover_image, p.cover_alt, p.topic, p.status, p.reading_minutes,
     p.featured, p.published_at, p.created_at, p.updated_at, p.view_count, p.allow_comments,
     p.access_mode, p.exclusive_days,
-    (select count(*)::int from comments c where c.post_id = p.id) as comment_count,
-    (select count(*)::int from post_likes l where l.post_id = p.id) as like_count
-  from posts p
+    ${SELECT_COUNTS}
 `;
 
 type WikiNoteRow = { slug: string; title: string; body: string };
+
+let wikiNotesCache: { stamp: string; notes: WikiCatalogItem[]; bodies: Record<string, string> } | null = null;
+let chromeCache: { at: number; data: SiteChrome } | null = null;
+const CHROME_MS = 4_000;
+
+function bustSiteCaches() {
+  wikiNotesCache = null;
+  chromeCache = null;
+}
 
 function noteToCatalog(row: WikiNoteRow): WikiCatalogItem {
   return {
@@ -117,13 +142,19 @@ function noteToCatalog(row: WikiNoteRow): WikiCatalogItem {
 }
 
 async function loadWikiNotes(sql: Awaited<ReturnType<typeof getSql>>) {
+  const stampRows = await sql.query<{ stamp: string | null }>(
+    `select coalesce(max(updated_at)::text, '') as stamp from posts where status = 'published' and deleted_at is null`,
+  );
+  const stamp = stampRows[0]?.stamp ?? "";
+  if (wikiNotesCache && wikiNotesCache.stamp === stamp) return wikiNotesCache;
   const rows = await sql.query<WikiNoteRow>(
     `select slug, title, body from posts where status = 'published' and deleted_at is null order by published_at desc`,
   );
   const notes = rows.map(noteToCatalog);
   const bodies: Record<string, string> = {};
   for (const row of rows) bodies[row.slug] = row.body;
-  return { notes, bodies };
+  wikiNotesCache = { stamp, notes, bodies };
+  return wikiNotesCache;
 }
 
 async function loadWiki(
@@ -139,7 +170,19 @@ async function loadWiki(
   return buildWikiGraph(current.slug, current.body, catalog, allBodies);
 }
 
+let seedLock: Promise<void> | null = null;
+
 async function ensureSeeded() {
+  if (!seedLock) {
+    seedLock = seedOnce().catch((error) => {
+      seedLock = null;
+      throw error;
+    });
+  }
+  return seedLock;
+}
+
+async function seedOnce() {
   const sql = await getSql();
   await ensureMomentsSeeded();
   await ensureLinksSeeded();
@@ -264,17 +307,22 @@ async function queryPosts(sql: Awaited<ReturnType<typeof getSql>>, clause: strin
 
 async function buildSiteChrome(): Promise<SiteChrome> {
   await ensureSeeded();
+  const now = Date.now();
+  if (chromeCache && now - chromeCache.at < CHROME_MS) return chromeCache.data;
   const sql = await getSql();
   const posts = await queryPosts(
     sql,
     `where p.status = 'published' and p.deleted_at is null order by p.featured desc, p.published_at desc`,
   );
-  const [tags, recentComments, pages] = await Promise.all([
+  const [tags, recentComments, pages, topics] = await Promise.all([
     fetchTagCloud(sql),
     fetchRecentComments(sql),
     getFrontPages().catch(() => ({ ...DEFAULT_FRONT_PAGES })),
+    loadTopics(),
   ]);
-  return { posts, tags, recentComments, pages };
+  const data = { posts, tags, recentComments, pages, topics };
+  chromeCache = { at: now, data };
+  return data;
 }
 
 export const getSiteChrome = createServerFn({ method: "GET" }).handler(async (): Promise<SiteChrome> => {
@@ -325,10 +373,22 @@ export const searchPublishedPosts = createServerFn({ method: "GET" })
     if (!query) {
       return queryPosts(sql, `where p.status = 'published' and p.deleted_at is null order by p.published_at desc`);
     }
-    const like = `%${query}%`;
+    const like = likeContains(query);
     return queryPosts(
       sql,
-      `where p.status = 'published' and p.deleted_at is null and (p.title ilike $1 or p.excerpt ilike $1) order by p.published_at desc`,
+      `where p.status = 'published' and p.deleted_at is null and (
+         p.title ilike $1
+         or p.excerpt ilike $1
+         or p.topic ilike $1
+         or exists (
+           select 1 from post_tags pt join tags t on t.id = pt.tag_id
+           where pt.post_id = p.id and (t.name ilike $1 or t.slug ilike $1)
+         )
+         or (
+           coalesce(p.access_mode, 'public') = 'public'
+           and p.body ilike $1
+         )
+       ) order by p.published_at desc`,
       [like],
     );
   });
@@ -339,7 +399,7 @@ export const getPostBySlug = createServerFn({ method: "GET" })
   .handler(async ({ context, data: slug }): Promise<PostDetail | null> => {
     await ensureSeeded();
     const sql = await getSql();
-    const rows = await sql.query<PostRow>(`${SELECT_LIST} where p.slug = $1 and p.deleted_at is null limit 1`, [slug]);
+    const rows = await sql.query<PostRow>(`${SELECT_DETAIL} where p.slug = $1 and p.deleted_at is null limit 1`, [slug]);
     const row = rows[0];
     if (!row) return null;
     const [post] = await attachTags(sql, [toListItem(normalizeRow(row))]);
@@ -374,7 +434,7 @@ const postInputSchema = z.object({
   excerpt: z.string().trim().max(180),
   body: z.string().trim().max(20000),
   topic: z.string().trim().min(1),
-  coverImage: z.string().trim().max(300).nullable().optional(),
+  coverImage: z.string().trim().max(500).nullable().optional(),
   coverAlt: z.string().trim().max(120).nullable().optional(),
   status: z.enum(["draft", "published"]),
   tags: z.array(z.string().trim().min(1).max(12)).max(8).optional(),
@@ -395,7 +455,7 @@ export const createPost = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(postInputSchema)
   .handler(async ({ context, data }): Promise<{ slug: string; id: number }> => {
-    if (!isTopic(data.topic)) throw new Error("未知栏目");
+    await assertKnownTopic(data.topic);
     assertPublishable(data);
     const actor = await getActor(context.userId);
     if (!actor.canWrite) throw new Error("没有权限");
@@ -425,6 +485,8 @@ export const createPost = createServerFn({ method: "POST" })
     const id = (inserted[0] as { id: number } | undefined)?.id;
     if (!id) throw new Error("无法保存");
     await replacePostTags(sql, id, data.tags ?? []);
+    await sweepGhostAttachmentsQuietly();
+    bustSiteCaches();
     return { slug, id };
   });
 
@@ -436,7 +498,7 @@ export const updatePost = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(updateSchema)
   .handler(async ({ context, data }): Promise<{ slug: string }> => {
-    if (!isTopic(data.topic)) throw new Error("未知栏目");
+    await assertKnownTopic(data.topic);
     const sql = await getSql();
     const { row: current } = await requirePostAccess(sql, context.userId, data.id);
     assertPublishable(data);
@@ -481,6 +543,8 @@ export const updatePost = createServerFn({ method: "POST" })
       where id = ${data.id}
     `;
     await replacePostTags(sql, data.id, data.tags ?? []);
+    await sweepGhostAttachmentsQuietly();
+    bustSiteCaches();
     return { slug: current.slug };
   });
 
@@ -502,6 +566,7 @@ export const setPostStatus = createServerFn({ method: "POST" })
       update posts set status = ${data.status}, published_at = ${publishedAt}, updated_at = ${now}
       where id = ${data.id}
     `;
+    bustSiteCaches();
     return { ok: true };
   });
 
@@ -515,6 +580,7 @@ export const setPostFeatured = createServerFn({ method: "POST" })
       update posts set featured = ${data.featured}, updated_at = ${new Date().toISOString()}
       where id = ${data.id}
     `;
+    bustSiteCaches();
     return { ok: true };
   });
 
@@ -525,6 +591,7 @@ export const deletePost = createServerFn({ method: "POST" })
     const sql = await getSql();
     await requirePostAccess(sql, context.userId, id);
     await sql`update posts set deleted_at = ${new Date().toISOString()} where id = ${id}`;
+    bustSiteCaches();
     return { ok: true };
   });
 
@@ -535,6 +602,7 @@ export const restorePost = createServerFn({ method: "POST" })
     const sql = await getSql();
     await requirePostAccess(sql, context.userId, id, true);
     await sql`update posts set deleted_at = ${null} where id = ${id}`;
+    bustSiteCaches();
     return { ok: true };
   });
 
@@ -551,6 +619,8 @@ export const purgePost = createServerFn({ method: "POST" })
     } else {
       throw new Error("没有权限");
     }
+    await sweepGhostAttachmentsQuietly();
+    bustSiteCaches();
     return { ok: true };
   });
 
@@ -564,7 +634,7 @@ export const getPostForEdit = createServerFn({ method: "GET" })
     } catch {
       return null;
     }
-    const rows = await sql.query<PostRow>(`${SELECT_LIST} where p.id = $1 limit 1`, [id]);
+    const rows = await sql.query<PostRow>(`${SELECT_DETAIL} where p.id = $1 limit 1`, [id]);
     const row = rows[0];
     if (!row) return null;
     const [post] = await attachTags(sql, [toListItem(normalizeRow(row))]);
@@ -631,6 +701,7 @@ export const restoreRevision = createServerFn({ method: "POST" })
         reading_minutes = ${minutes}, updated_at = ${new Date().toISOString()}
       where id = ${data.postId}
     `;
+    bustSiteCaches();
     return { ok: true };
   });
 
@@ -651,7 +722,7 @@ export type UpsertPostInput = {
 };
 
 export async function upsertPostBySlug(input: UpsertPostInput): Promise<{ id: number; slug: string; created: boolean }> {
-  if (!isTopic(input.topic)) throw new Error("未知栏目");
+  await assertKnownTopic(input.topic);
   const title = input.title.trim();
   const excerpt = input.excerpt.trim();
   const body = input.body.trim();
@@ -708,6 +779,8 @@ export async function upsertPostBySlug(input: UpsertPostInput): Promise<{ id: nu
       where id = ${id}
     `;
     await replacePostTags(sql, id, input.tags ?? []);
+    await sweepGhostAttachmentsQuietly();
+    bustSiteCaches();
     return { id, slug, created: false };
   }
 
@@ -729,6 +802,7 @@ export async function upsertPostBySlug(input: UpsertPostInput): Promise<{ id: nu
   const id = (inserted[0] as { id: number } | undefined)?.id;
   if (!id) throw new Error("无法保存");
   await replacePostTags(sql, id, input.tags ?? []);
+  await sweepGhostAttachmentsQuietly();
   return { id, slug, created: true };
 }
 

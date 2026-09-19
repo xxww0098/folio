@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { highlight, languageInfo, type FenceMeta } from "@/lib/blog/highlight";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const TOKEN_CLASS: Record<string, string> = {
@@ -33,28 +34,30 @@ export function CodeBlock({ lang, filename, highlights, code }: FenceMeta) {
   }
 
   return (
-    <figure className="code-block group my-6 overflow-hidden rounded-lg bg-code shadow-[inset_0_0_0_1px_rgb(148_163_184/0.12)]">
+    <figure className="code-block group my-6 -mx-4 overflow-hidden rounded-none bg-code shadow-[inset_0_0_0_1px_rgb(148_163_184/0.12)] sm:mx-0 sm:rounded-lg">
       <figcaption className="flex h-10 items-center gap-2 border-b border-white/5 px-3">
         <span className={cn("size-2 rounded-full", info.id === "text" ? "bg-slate-500" : "bg-current", info.tone)} />
         <span className={cn("text-xs font-medium", info.tone)}>{info.label}</span>
         {filename ? (
           <span className="min-w-0 truncate font-mono text-xs text-code-muted">{filename}</span>
         ) : null}
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => void copy()}
           className={cn(
-            "ml-auto inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs transition-colors",
-            copied ? "text-code-str" : "text-code-muted hover:bg-white/5 hover:text-code-fg",
+            "ml-auto h-8 gap-1.5 px-2 text-xs hover:bg-white/5",
+            copied ? "text-code-str" : "text-code-muted hover:text-code-fg",
           )}
           aria-label={copied ? "已复制" : "复制代码"}
         >
           {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
-          {copied ? "已复制" : "复制"}
-        </button>
+          <span className="hidden sm:inline">{copied ? "已复制" : "复制"}</span>
+        </Button>
       </figcaption>
       <pre className="overflow-x-auto py-3">
-        <code className="block font-mono text-sm leading-6">
+        <code className="block font-mono text-xs leading-6 sm:text-sm">
           {lines.map((line, index) => (
             <span
               key={index}
@@ -66,7 +69,7 @@ export function CodeBlock({ lang, filename, highlights, code }: FenceMeta) {
               )}
             >
               {numbered ? (
-                <span className="sticky left-0 w-8 shrink-0 select-none bg-inherit pr-3 text-right text-code-muted tabular-nums">
+                <span className="sticky left-0 hidden w-8 shrink-0 select-none bg-inherit pr-3 text-right text-code-muted tabular-nums sm:inline">
                   {index + 1}
                 </span>
               ) : null}

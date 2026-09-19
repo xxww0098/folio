@@ -48,31 +48,32 @@ function StatCard({
 type QuickItem = {
   id: string;
   label: string;
+  hint?: string;
   icon: LucideIcon;
   section?: ConsoleSection;
   href?: string;
   play?: boolean;
+  external?: boolean;
 };
 
 const QUICK_CONSOLE: QuickItem[] = [
-  { id: "me", label: "个人中心", icon: UserRound, href: "/me" },
-  { id: "site", label: "查看站点", icon: AppWindow, href: "/" },
-  { id: "write", label: "创建文章", icon: FileText, section: "write" },
-  { id: "comments", label: "评论管理", icon: MessageSquare, section: "comments" },
-  { id: "files", label: "附件上传", icon: Folder, section: "files" },
-  { id: "theme", label: "主题管理", icon: Palette, section: "appearance", play: true },
-  { id: "obsidian", label: "Obsidian", icon: BookOpen, section: "obsidian" },
-  { id: "members", label: "用户管理", icon: Users, section: "members" },
-  { id: "refresh", label: "刷新数据", icon: RefreshCw },
+  { id: "site", label: "访问博客", hint: "看看读者看到的样子", icon: AppWindow, href: "/", external: true },
+  { id: "write", label: "写文章", hint: "打开编辑器", icon: FileText, section: "write" },
+  { id: "comments", label: "评论", hint: "回复读者", icon: MessageSquare, section: "comments" },
+  { id: "files", label: "附件", hint: "上传图片", icon: Folder, section: "files" },
+  { id: "theme", label: "主题", hint: "换外观", icon: Palette, section: "appearance", play: true },
+  { id: "obsidian", label: "Obsidian", hint: "同步笔记", icon: BookOpen, section: "obsidian" },
+  { id: "members", label: "用户", hint: "角色与会员", icon: Users, section: "members" },
+  { id: "refresh", label: "刷新", hint: "重新拉取数据", icon: RefreshCw },
 ];
 
 const QUICK_ME: QuickItem[] = [
-  { id: "site", label: "查看站点", icon: AppWindow, href: "/" },
-  { id: "comments", label: "我的评论", icon: MessageSquare, section: "comments" },
-  { id: "membership", label: "会员", icon: Sparkles, href: "/membership" },
-  { id: "theme", label: "主题", icon: Palette, section: "appearance", play: true },
-  { id: "settings", label: "账户设置", icon: UserRound, section: "settings" },
-  { id: "refresh", label: "刷新数据", icon: RefreshCw },
+  { id: "site", label: "访问博客", hint: "回到前台", icon: AppWindow, href: "/", external: true },
+  { id: "comments", label: "我的评论", hint: "你写过的留言", icon: MessageSquare, section: "comments" },
+  { id: "membership", label: "会员", hint: "开通或兑换", icon: Sparkles, href: "/membership" },
+  { id: "theme", label: "主题", hint: "换外观", icon: Palette, section: "appearance", play: true },
+  { id: "settings", label: "账户", hint: "登录与退出", icon: UserRound, section: "settings" },
+  { id: "refresh", label: "刷新", hint: "重新拉取数据", icon: RefreshCw },
 ];
 
 export function ConsoleDashboard({
@@ -118,7 +119,7 @@ export function ConsoleDashboard({
               const inner = (
                 <>
                   <div className="flex items-start justify-between">
-                    <span className="relative grid size-10 place-items-center rounded-xl bg-console-mint-soft text-console-mint">
+                    <span className="console-quick-icon relative grid size-10 place-items-center rounded-xl bg-console-mint-soft text-console-mint transition-colors duration-200">
                       <Icon className="size-5" />
                       {item.play ? (
                         <span className="absolute -right-1.5 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full bg-console-sidebar text-console-nav shadow-[0_1px_2px_var(--color-console-shadow)]">
@@ -126,13 +127,14 @@ export function ConsoleDashboard({
                         </span>
                       ) : null}
                     </span>
-                    <ChevronRight className="size-4 text-console-line" />
+                    <ChevronRight className="console-quick-arrow size-4 text-console-line transition-transform duration-200" />
                   </div>
                   <p className="mt-8 text-sm text-console-ink">{item.label}</p>
+                  {item.hint ? <p className="mt-1 text-xs text-console-muted">{item.hint}</p> : null}
                 </>
               );
               const className =
-                "console-quick-tile flex min-h-32 flex-col rounded-xl bg-console-quick px-4 py-4 text-left transition-colors duration-150 hover:bg-console-mint-soft/70";
+                "console-quick-tile flex min-h-32 flex-col rounded-xl bg-console-quick px-4 py-4 text-left outline-none";
               if (item.id === "refresh") {
                 return (
                   <button key={item.id} type="button" onClick={onRefresh} className={className}>
@@ -156,9 +158,9 @@ export function ConsoleDashboard({
               }
               if (item.href === "/") {
                 return (
-                  <Link key={item.id} to="/" className={className}>
+                  <a key={item.id} href="/" target="_blank" rel="noreferrer" className={className}>
                     {inner}
-                  </Link>
+                  </a>
                 );
               }
               return (

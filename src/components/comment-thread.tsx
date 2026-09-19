@@ -6,7 +6,10 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { addComment, deleteComment } from "@/lib/comments/server";
 import type { CommentItem } from "@/lib/blog/types";
 import { formatZhDate } from "@/lib/format";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 
 export function CommentThread({
@@ -57,32 +60,37 @@ export function CommentThread({
   }
 
   return (
-    <section className="mt-16 border-t border-border pt-10">
-      <div className="mb-8 flex items-baseline justify-between gap-4">
+    <section className="mt-16">
+      <Separator />
+      <div className="mb-8 mt-10 flex items-baseline justify-between gap-4">
         <h2 className="text-lg font-semibold">评论</h2>
         <span className="text-sm text-muted-foreground tabular-nums">{comments.length} 条</span>
       </div>
 
       {!allowComments ? (
-        <p className="mb-10 rounded-lg bg-secondary px-4 py-5 text-sm text-muted-foreground">本文已关闭评论。</p>
+        <Alert variant="muted" className="mb-10">
+          <AlertDescription>本文已关闭评论。</AlertDescription>
+        </Alert>
       ) : (
         <SignInGate
           fallback={
-            <p className="mb-10 rounded-lg bg-secondary px-4 py-5 text-sm leading-relaxed text-muted-foreground">
-              登录或注册后可以发表评论。
-              <Link to="/login" className="ml-2 text-foreground underline underline-offset-4">
-                前往登录
-              </Link>
-            </p>
+            <Alert variant="muted" className="mb-10">
+              <AlertDescription>
+                登录或注册后可以发表评论。
+                <Button asChild variant="link" className="h-auto px-1">
+                  <Link to="/login">前往登录</Link>
+                </Button>
+              </AlertDescription>
+            </Alert>
           }
         >
           <form onSubmit={onSubmit} className="mb-10 space-y-3">
             {replyTo ? (
               <p className="text-xs text-muted-foreground">
                 回复 {replyTo.authorName}
-                <button type="button" className="ml-2 text-primary" onClick={() => setReplyTo(null)}>
+                <Button type="button" variant="link" className="ml-1 h-auto px-1" onClick={() => setReplyTo(null)}>
                   取消
-                </button>
+                </Button>
               </p>
             ) : null}
             <Textarea
@@ -102,7 +110,11 @@ export function CommentThread({
 
       <ol className="space-y-6">
         {roots.length === 0 ? (
-          <li className="text-sm text-muted-foreground">还没有评论，来写第一条。</li>
+          <li>
+            <Alert variant="muted">
+              <AlertDescription>还没有评论，来写第一条。</AlertDescription>
+            </Alert>
+          </li>
         ) : (
           roots.map((comment) => (
             <li key={comment.id} className="border-b border-border pb-5 last:border-0">
@@ -113,7 +125,7 @@ export function CommentThread({
                 onDelete={onDelete}
               />
               {repliesOf(comment.id).length ? (
-                <ol className="mt-4 space-y-4 border-l border-border pl-4">
+                <ol className="mt-4 space-y-4 border-l border-border pl-3 sm:pl-4">
                   {repliesOf(comment.id).map((reply) => (
                     <li key={reply.id}>
                       <CommentItemView
@@ -145,28 +157,35 @@ function CommentItemView({
   onDelete: (id: number) => void;
 }) {
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-sm font-medium">{comment.authorName}</p>
-        <div className="flex items-center gap-3">
-          <time className="text-xs text-muted-foreground">{formatZhDate(comment.createdAt)}</time>
-          {onReply ? (
-            <button type="button" className="text-xs text-muted-foreground hover:text-primary" onClick={onReply}>
-              回复
-            </button>
-          ) : null}
-          {currentUserId === comment.userId ? (
-            <button
-              type="button"
-              className="text-xs text-muted-foreground underline-offset-4 hover:underline"
-              onClick={() => onDelete(comment.id)}
-            >
-              删除
-            </button>
-          ) : null}
+    <div className="flex gap-3">
+      <Avatar className="size-8">
+        <AvatarFallback className="text-xs">{comment.authorName.slice(0, 1)}</AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <p className="text-sm font-medium">{comment.authorName}</p>
+          <div className="flex items-center gap-1">
+            <time className="px-1 text-xs text-muted-foreground">{formatZhDate(comment.createdAt)}</time>
+            {onReply ? (
+              <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onReply}>
+                回复
+              </Button>
+            ) : null}
+            {currentUserId === comment.userId ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                onClick={() => onDelete(comment.id)}
+              >
+                删除
+              </Button>
+            ) : null}
+          </div>
         </div>
+        <p className="text-sm leading-relaxed">{comment.body}</p>
       </div>
-      <p className="text-sm leading-relaxed">{comment.body}</p>
     </div>
   );
 }

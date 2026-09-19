@@ -16,7 +16,7 @@ import {
   setPostStatus,
 } from "@/lib/blog/server";
 import { deleteComment } from "@/lib/comments/server";
-import { deleteAttachment, listAttachments, uploadAttachment, type AttachmentItem } from "@/lib/attachments/server";
+import { deleteAttachment, listAttachments, sweepGhostFiles, uploadAttachment, type AttachmentItem } from "@/lib/attachments/server";
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
 import type { AuthorDashboard, PostDetail, PostListItem } from "@/lib/blog/types";
 import { formatZhDate } from "@/lib/format";
@@ -40,11 +40,14 @@ import { McpPanel } from "@/components/mcp-panel";
 import { ThemeGallery } from "@/components/theme-gallery";
 import { LinksPanel } from "./links-panel";
 import { PagesPanel } from "./pages-panel";
-import { ReleaseBanner } from "@/components/release-banner";
+import { TopicsPanel } from "./topics-panel";
+import { UpdatePanel } from "./update-panel";
 import { EntrancePanel } from "@/components/entrance-panel";
 import { BackupPanel } from "@/components/backup-panel";
 import { StoragePanel } from "@/components/storage-panel";
 import { ConsoleDashboard } from "./dashboard";
+import { PostsTable } from "./posts-table";
+import { MembersTable } from "./members-table";
 import { ME_SECTIONS, type ConsoleSection } from "./nav";
 import { ConsoleShell } from "./shell";
 import { WriteForm } from "@/components/write-form";
@@ -207,6 +210,36 @@ export function WorkspaceApp({
     }
   }
 
+  async function onBulkStatus(ids: number[], status: "draft" | "published") {
+    setBusy("bulk");
+    try {
+      for (const id of ids) {
+        await setPostStatus({ data: { id, status } });
+      }
+      toast.success(status === "published" ? `已发布 ${ids.length} 篇` : `已撤回 ${ids.length} 篇`);
+      await refresh();
+    } catch {
+      toast.error("无法批量更改");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onBulkDelete(ids: number[]) {
+    setBusy("bulk");
+    try {
+      for (const id of ids) {
+        await deletePost({ data: id });
+      }
+      toast.success(`已移入回收站 ${ids.length} 篇`);
+      await refresh();
+    } catch {
+      toast.error("无法批量删除");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function onRestore(id: number) {
     setBusy(`restore-${id}`);
     try {
@@ -239,8 +272,30 @@ export function WorkspaceApp({
       await deleteAttachment({ data: id });
       setFiles((current) => current.filter((item) => item.id !== id));
       toast.success("已删除附件");
-    } catch {
-      toast.error("无法删除附件");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "无法删除附件");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onSweepFiles() {
+    setBusy("sweep");
+    try {
+      const result = await sweepGhostFiles();
+      const next = await listAttachments({ data: { scope } });
+      setFiles(next);
+      if (result.removed && result.objects) {
+        toast.success(`已清理 ${result.removed} 张未引用，并去掉桶里 ${result.objects} 个幽灵文件`);
+      } else if (result.removed) {
+        toast.success(`已清理 ${result.removed} 张未引用图片`);
+      } else if (result.objects) {
+        toast.success(`已去掉桶里 ${result.objects} 个幽灵文件`);
+      } else {
+        toast.success("没有未引用的图片");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "无法清理");
     } finally {
       setBusy(null);
     }
@@ -303,6 +358,51 @@ export function WorkspaceApp({
       await refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "无法取消");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onBulkRole(ids: string[], role: Role) {
+    setBusy("bulk-members");
+    try {
+      for (const userId of ids) {
+        await setMemberRole({ data: { userId, role } });
+      }
+      toast.success(`已更新 ${ids.length} 人角色`);
+      await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "无法批量改角色");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onBulkGrant(ids: string[]) {
+    setBusy("bulk-members");
+    try {
+      for (const userId of ids) {
+        await grantSubscription({ data: { userId, days: 365 } });
+      }
+      toast.success(`已赠送 ${ids.length} 人年卡`);
+      await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "无法批量赠送");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onBulkRevoke(ids: string[]) {
+    setBusy("bulk-members");
+    try {
+      for (const userId of ids) {
+        await revokeSubscription({ data: { userId } });
+      }
+      toast.success(`已取消 ${ids.length} 人会员`);
+      await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "无法批量取消");
     } finally {
       setBusy(null);
     }
@@ -391,13 +491,19 @@ export function WorkspaceApp({
         onStatus={onStatus}
         onFeatured={onFeatured}
         onDeletePost={onDeletePost}
+        onBulkStatus={onBulkStatus}
+        onBulkDelete={onBulkDelete}
         onRestore={onRestore}
         onPurge={onPurge}
         onDeleteFile={onDeleteFile}
+        onSweepFiles={onSweepFiles}
         onUpload={onUpload}
         onRole={onRole}
         onGrant={onGrant}
         onRevoke={onRevoke}
+        onBulkRole={onBulkRole}
+        onBulkGrant={onBulkGrant}
+        onBulkRevoke={onBulkRevoke}
         onCreateCode={onCreateCode}
         onDeleteCode={onDeleteCode}
         onDeleteComment={onDeleteComment}
@@ -432,13 +538,19 @@ function ConsoleBody({
   onStatus,
   onFeatured,
   onDeletePost,
+  onBulkStatus,
+  onBulkDelete,
   onRestore,
   onPurge,
   onDeleteFile,
+  onSweepFiles,
   onUpload,
   onRole,
   onGrant,
   onRevoke,
+  onBulkRole,
+  onBulkGrant,
+  onBulkRevoke,
   onCreateCode,
   onDeleteCode,
   onDeleteComment,
@@ -455,13 +567,19 @@ function ConsoleBody({
   onStatus: (id: number, status: "draft" | "published") => void;
   onFeatured: (id: number, featured: boolean) => void;
   onDeletePost: (id: number) => void;
+  onBulkStatus: (ids: number[], status: "draft" | "published") => void;
+  onBulkDelete: (ids: number[]) => void;
   onRestore: (id: number) => void;
   onPurge: (id: number) => void;
   onDeleteFile: (id: number) => void;
+  onSweepFiles: () => void;
   onUpload: (file: File | undefined) => void;
   onRole: (userId: string, role: Role) => void;
   onGrant: (userId: string) => void;
   onRevoke: (userId: string) => void;
+  onBulkRole: (ids: string[], role: Role) => void;
+  onBulkGrant: (ids: string[]) => void;
+  onBulkRevoke: (ids: string[]) => void;
   onCreateCode: (days: number) => void;
   onDeleteCode: (id: number) => void;
   onDeleteComment: (id: number) => void;
@@ -497,7 +615,7 @@ function ConsoleBody({
     return (
       <Panel
         extra={
-          <Button asChild size="sm">
+          <Button asChild size="sm" className="console-cta bg-console-brand text-white hover:bg-console-brand/90">
             <Link to="/console" search={{ section: "write" }}>
               写文章
             </Link>
@@ -507,53 +625,15 @@ function ConsoleBody({
         {dash.posts.length === 0 ? (
           <Empty text={area === "me" ? "你还没有文章。从一篇短的开始。" : "还没有文章。从一篇短的开始。"} />
         ) : (
-          <ul className="divide-y divide-console-line">
-            {dash.posts.map((post) => (
-              <li key={post.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="font-medium">
-                    <Link
-                      to="/console"
-                      search={{ section: "write", id: post.id }}
-                      className="hover:text-console-brand"
-                    >
-                      {post.title}
-                    </Link>
-                  </p>
-                  <p className="mt-1 text-xs text-console-muted">
-                    {post.topic} · {post.status === "published" ? "已发布" : "草稿"}
-                    {post.exclusive ? ` · ${ACCESS_LABEL[post.accessMode]}` : ""}
-                    {post.updatedAt ? ` · ${formatZhDate(post.updatedAt)}` : ""}
-                    {` · ${post.viewCount} 次阅读`}
-                  </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button asChild size="sm" variant="outline">
-                    <Link to="/console" search={{ section: "write", id: post.id }}>
-                      编辑
-                    </Link>
-                  </Button>
-                  {post.status === "published" ? (
-                    <Button size="sm" variant="ghost" disabled={busy === `feat-${post.id}`} onClick={() => onFeatured(post.id, !post.featured)}>
-                      {post.featured ? "取消置顶" : "置顶"}
-                    </Button>
-                  ) : null}
-                  {post.status === "published" ? (
-                    <Button size="sm" variant="ghost" disabled={busy === `status-${post.id}`} onClick={() => onStatus(post.id, "draft")}>
-                      撤回
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="ghost" disabled={busy === `status-${post.id}`} onClick={() => onStatus(post.id, "published")}>
-                      发布
-                    </Button>
-                  )}
-                  <Button size="sm" variant="ghost" className="text-destructive" disabled={busy === `del-${post.id}`} onClick={() => onDeletePost(post.id)}>
-                    删除
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
+          <PostsTable
+            posts={dash.posts}
+            busy={busy}
+            onStatus={onStatus}
+            onFeatured={onFeatured}
+            onDelete={onDeletePost}
+            onBulkStatus={onBulkStatus}
+            onBulkDelete={onBulkDelete}
+          />
         )}
       </Panel>
     );
@@ -597,27 +677,37 @@ function ConsoleBody({
   }
 
   if (section === "files") {
+    const unused = files.filter((item) => item.stored && !item.referenced).length;
     return (
       <Panel
         extra={
-          <label className="inline-flex h-9 cursor-pointer items-center rounded-md bg-primary px-3 text-sm text-primary-foreground">
-            {busy === "upload" ? "上传中…" : "上传图片"}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              className="hidden"
-              disabled={busy === "upload"}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.target.value = "";
-                onUpload(file);
-              }}
-            />
-          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            {unused > 0 ? (
+              <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => onSweepFiles()}>
+                {busy === "sweep" ? "清理中…" : `清理 ${unused} 张未引用`}
+              </Button>
+            ) : null}
+            <label className="inline-flex h-9 cursor-pointer items-center rounded-md bg-primary px-3 text-sm text-primary-foreground">
+              {busy === "upload" ? "上传中…" : "上传图片"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,.gif"
+                className="hidden"
+                disabled={busy === "upload"}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = "";
+                  onUpload(file);
+                }}
+              />
+            </label>
+          </div>
         }
       >
         <p className="px-5 pt-2 text-sm text-console-muted">
-          {area === "me" ? "你上传的图片。单张不超过 2 MB。" : "站点封面与已上传的图片。单张不超过 2 MB。"}
+          {area === "me"
+            ? "你上传的图片，含 GIF。单张不超过 8 MB。正文里不用的图可以删掉，对象存储里的文件会一起删。"
+            : "站点封面与已上传的图片，含 GIF。正文和封面不再引用的图要删掉，避免对象存储里留下幽灵文件。"}
         </p>
         {files.length === 0 ? (
           <Empty text="还没有附件。" />
@@ -632,17 +722,18 @@ function ConsoleBody({
                     <p className="text-xs text-console-muted">
                       {item.groupName}
                       {item.backend === "s3" ? " · 对象存储" : item.backend === "pg" ? " · 数据库" : ""}
+                      {item.stored ? (item.referenced ? " · 使用中" : " · 未引用") : ""}
                       {item.sizeBytes ? ` · ${formatBytes(item.sizeBytes)}` : ""}
                     </p>
                   </div>
-                  {item.stored ? (
+                  {item.stored && !item.referenced ? (
                     <button
                       type="button"
                       className="shrink-0 text-xs text-console-muted hover:text-destructive"
                       disabled={busy === `file-${item.id}`}
                       onClick={() => onDeleteFile(item.id)}
                     >
-                      删除
+                      {busy === `file-${item.id}` ? "删除中…" : "删除"}
                     </button>
                   ) : null}
                 </div>
@@ -686,6 +777,12 @@ function ConsoleBody({
             <h2 className="text-sm font-semibold text-console-ink">前台栏目</h2>
             <div className="mt-3">
               <PagesPanel />
+            </div>
+          </div>
+          <div className="mt-10">
+            <h2 className="text-sm font-semibold text-console-ink">分类</h2>
+            <div className="mt-3">
+              <TopicsPanel />
             </div>
           </div>
         </div>
@@ -752,39 +849,17 @@ function ConsoleBody({
     }
     return (
       <Panel>
-        <ul className="divide-y divide-console-line">
-          {dash.members.map((member) => (
-            <li key={member.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="font-medium">{member.name}</p>
-                <p className="mt-1 truncate text-xs text-console-muted">{member.email ?? "未填写邮箱"}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Select value={member.role} onValueChange={(value) => onRole(member.id, value as Role)} disabled={busy === `role-${member.id}`}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {ROLE_LABEL[item]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {members.subscribers.some((item) => item.userId === member.id && item.status === "active") ? (
-                  <Button size="sm" variant="ghost" disabled={busy === `revoke-${member.id}`} onClick={() => onRevoke(member.id)}>
-                    取消会员
-                  </Button>
-                ) : (
-                  <Button size="sm" variant="outline" disabled={busy === `grant-${member.id}`} onClick={() => onGrant(member.id)}>
-                    赠送年卡
-                  </Button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <MembersTable
+          members={dash.members}
+          subscribers={members.subscribers}
+          busy={busy}
+          onRole={onRole}
+          onGrant={onGrant}
+          onRevoke={onRevoke}
+          onBulkRole={onBulkRole}
+          onBulkGrant={onBulkGrant}
+          onBulkRevoke={onBulkRevoke}
+        />
       </Panel>
     );
   }
@@ -850,11 +925,7 @@ function ConsoleBody({
   }
 
   if (section === "storage") {
-    return (
-      <Panel>
-        {dash.role !== "admin" ? <Empty text="只有管理员可以设置存储。" /> : <div className="p-5"><StoragePanel /></div>}
-      </Panel>
-    );
+    return <Navigate to="/console" search={{ section: "settings" }} />;
   }
 
   if (section === "backup") {
@@ -862,6 +933,77 @@ function ConsoleBody({
       <Panel>
         {dash.role !== "admin" ? <Empty text="只有管理员可以备份站点。" /> : <div className="p-5"><BackupPanel /></div>}
       </Panel>
+    );
+  }
+
+  if (section === "settings") {
+    if (area === "me") {
+      return (
+        <Panel>
+          <div className="space-y-6 p-5">
+            <div>
+              <h2 className="text-sm font-semibold">账户</h2>
+              <p className="mt-2 text-sm text-console-muted">
+                当前身份：{ROLE_LABEL[dash.role]}。
+                {dash.role === "admin"
+                  ? "站点管理在控制台。这里只看你的评论、会员和账户。"
+                  : "注册用户可以评论、开通会员阅读付费文章。"}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link to="/membership">会员</Link>
+              </Button>
+              {dash.role === "admin" ? (
+                <Button asChild size="sm">
+                  <Link to="/console">打开控制台</Link>
+                </Button>
+              ) : null}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  void signOut().catch(() => undefined);
+                }}
+              >
+                退出
+              </Button>
+            </div>
+          </div>
+        </Panel>
+      );
+    }
+    return (
+      <div className="space-y-4">
+        <Panel>
+          <div className="p-5">
+            {dash.role !== "admin" ? (
+              <p className="text-sm text-console-muted">只有管理员可以修改站点设置。</p>
+            ) : (
+              <div className="space-y-10">
+                <section>
+                  <h2 className="text-sm font-semibold">自动更新</h2>
+                  <div className="mt-3">
+                    <UpdatePanel />
+                  </div>
+                </section>
+                <section>
+                  <h2 className="text-sm font-semibold">后台入口</h2>
+                  <div className="mt-3">
+                    <EntrancePanel />
+                  </div>
+                </section>
+                <section>
+                  <h2 className="text-sm font-semibold">对象存储</h2>
+                  <div className="mt-3">
+                    <StoragePanel />
+                  </div>
+                </section>
+              </div>
+            )}
+          </div>
+        </Panel>
+      </div>
     );
   }
 
@@ -903,37 +1045,9 @@ function ConsoleBody({
   }
 
   return (
-    <div className="space-y-4">
-      <Panel>
-        <div className="p-5">
-          <ReleaseBanner />
-          {dash.role !== "admin" ? (
-            <p className="mt-4 text-sm text-console-muted">只有管理员可以修改站点设置。</p>
-          ) : (
-            <div className="mt-2 space-y-10">
-              <section>
-                <h2 className="text-sm font-semibold">后台入口</h2>
-                <div className="mt-3">
-                  <EntrancePanel />
-                </div>
-              </section>
-              <section>
-                <h2 className="text-sm font-semibold">存储</h2>
-                <div className="mt-3">
-                  <StoragePanel />
-                </div>
-              </section>
-              <section>
-                <h2 className="text-sm font-semibold">备份</h2>
-                <div className="mt-3">
-                  <BackupPanel />
-                </div>
-              </section>
-            </div>
-          )}
-        </div>
-      </Panel>
-    </div>
+    <Panel>
+      <Empty text="没有这个页面。" />
+    </Panel>
   );
 }
 

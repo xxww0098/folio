@@ -1,145 +1,168 @@
 import { Link } from "@tanstack/react-router";
 import { FileText, FolderOpen, MessageCircle } from "lucide-react";
-import { TOPICS, type PostListItem, type RecentComment, type TagRef } from "@/lib/blog/types";
+import type { PostListItem, RecentComment, TagRef } from "@/lib/blog/types";
 import { formatZhDate } from "@/lib/format";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 export function SiteSidebar({
   posts,
   tags,
   recentComments = [],
+  topics,
   nested = false,
 }: {
   posts: PostListItem[];
   tags?: Array<TagRef & { count?: number }>;
   recentComments?: RecentComment[];
+  topics?: string[];
   nested?: boolean;
 }) {
   const commentCount = posts.reduce((sum, post) => sum + post.commentCount, 0);
   const recent = posts.slice(0, 5);
-  const topicCounts = TOPICS.map((topic) => ({
-    topic,
-    count: posts.filter((post) => post.topic === topic).length,
-  })).filter((item) => item.count > 0);
+  const topicList = topics?.length ? topics : [...new Set(posts.map((post) => post.topic))];
+  const topicCounts = topicList
+    .map((topic) => ({
+      topic,
+      count: posts.filter((post) => post.topic === topic).length,
+    }))
+    .filter((item) => item.count > 0);
   const tagCloud =
     tags && tags.length
       ? tags
       : [...new Map(posts.flatMap((post) => post.tags ?? []).map((tag) => [tag.slug, tag])).values()];
 
   return (
-    <aside className={nested ? "flex flex-col gap-6" : "hidden w-72 shrink-0 flex-col gap-6 md:flex"}>
-      <section className="overflow-hidden rounded-xl bg-card p-5 shadow-md">
-        <div className="flex flex-col items-center text-center">
-          <span className="grid size-16 place-items-center rounded-full bg-primary font-medium text-lg text-primary-foreground">
-            折
-          </span>
-          <h2 className="mt-3 text-base font-semibold">折页</h2>
-          <p className="mt-1 text-sm text-muted-foreground">类型系统、并发、数据库。</p>
-        </div>
-        <div className="mt-5 grid grid-cols-3 divide-x divide-border border-t border-border pt-4">
-          <Stat icon={FileText} label="文章" value={posts.length} />
-          <Stat icon={MessageCircle} label="评论" value={commentCount} />
-          <Stat icon={FolderOpen} label="分类" value={topicCounts.length} />
-        </div>
-      </section>
+    <aside className={nested ? "flex min-w-0 flex-col gap-6 overflow-hidden" : "hidden w-72 shrink-0 flex-col gap-6 md:flex"}>
+      <Card className="shadow-md">
+        <CardHeader className="items-center text-center">
+          <Avatar className="size-16">
+            <AvatarFallback className="bg-primary text-lg font-medium text-primary-foreground">折</AvatarFallback>
+          </Avatar>
+          <CardTitle className="font-sans text-base">折页</CardTitle>
+          <CardDescription>类型系统、并发、数据库。</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Separator className="mb-4" />
+          <div className="grid grid-cols-3 divide-x divide-border">
+            <Stat icon={FileText} label="文章" value={posts.length} />
+            <Stat icon={MessageCircle} label="评论" value={commentCount} />
+            <Stat icon={FolderOpen} label="分类" value={topicCounts.length} />
+          </div>
+        </CardContent>
+      </Card>
 
-      <section className="overflow-hidden rounded-xl bg-header p-5 text-header-foreground shadow-md">
-        <p className="text-sm font-medium text-primary">会员抢先</p>
-        <p className="mt-2 text-sm text-header-foreground/75">新文立刻读全文。</p>
-        <Link
-          to="/membership"
-          className="mt-4 inline-flex h-11 items-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition-transform duration-150 ease-out active:scale-[0.96]"
-        >
-          订阅
-        </Link>
-      </section>
+      <Card className="border-0 bg-header text-header-foreground shadow-md">
+        <CardHeader className="p-5">
+          <p className="text-sm font-medium text-primary">会员抢先</p>
+          <p className="text-sm text-header-foreground/75">新文立刻读全文。</p>
+        </CardHeader>
+        <CardContent className="px-5 pb-5">
+          <Button asChild>
+            <Link to="/membership">订阅</Link>
+          </Button>
+        </CardContent>
+      </Card>
 
-      <section className="overflow-hidden rounded-xl bg-card p-4 shadow-md">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">分类</h3>
-          <Link to="/categories" className="text-xs text-muted-foreground hover:text-primary">
-            全部
-          </Link>
-        </div>
-        <ul className="space-y-1">
-          {topicCounts.map(({ topic, count }) => (
-            <li key={topic}>
-              <Link
-                to="/topics/$topic"
-                params={{ topic }}
-                className="flex h-10 items-center justify-between rounded-md px-2 text-sm hover:bg-secondary"
-              >
-                <span className="font-mono text-sm">{topic}</span>
-                <span className="tabular-nums text-muted-foreground">{count}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="overflow-hidden rounded-xl bg-card p-4 shadow-md">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">标签</h3>
-          <Link to="/tags" className="text-xs text-muted-foreground hover:text-primary">
-            全部
-          </Link>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {tagCloud.map((tag) => (
-            <Link
-              key={tag.slug}
-              to="/tags/$tag"
-              params={{ tag: tag.slug }}
-              className="inline-flex h-8 items-center rounded-full bg-secondary px-3 text-xs text-muted-foreground hover:text-foreground"
-            >
-              #{tag.name}
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="overflow-hidden rounded-xl bg-card p-4 shadow-md">
-        <h3 className="mb-3 text-sm font-semibold">最新文章</h3>
-        <ul className="space-y-3">
-          {recent.map((post) => (
-            <li key={post.id} className="flex gap-3">
-              {post.coverImage ? (
-                <Link to="/posts/$slug" params={{ slug: post.slug }} className="shrink-0">
-                  <img src={post.coverImage} alt="" className="size-14 rounded-md object-cover" />
-                </Link>
-              ) : null}
-              <div className="min-w-0">
+      <Card className="shadow-md">
+        <CardHeader className="flex-row items-center justify-between space-y-0 p-4 pb-2">
+          <CardTitle className="font-sans text-sm">分类</CardTitle>
+          <Button asChild variant="link" className="h-auto p-0 text-xs text-muted-foreground">
+            <Link to="/categories">全部</Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="p-4 pt-2">
+          <ul className="space-y-1">
+            {topicCounts.map(({ topic, count }) => (
+              <li key={topic}>
                 <Link
-                  to="/posts/$slug"
-                  params={{ slug: post.slug }}
-                  className="line-clamp-2 text-sm font-medium leading-snug hover:text-primary"
+                  to="/topics/$topic"
+                  params={{ topic }}
+                  className="flex h-10 items-center justify-between rounded-md px-2 text-sm hover:bg-secondary"
                 >
-                  {post.title}
-                </Link>
-                <p className="mt-1 text-xs text-muted-foreground">{formatZhDate(post.publishedAt)}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {recentComments.length ? (
-        <section className="overflow-hidden rounded-xl bg-card p-4 shadow-md">
-          <h3 className="mb-3 text-sm font-semibold">最新评论</h3>
-          <ul className="space-y-3">
-            {recentComments.map((comment) => (
-              <li key={comment.id}>
-                <p className="line-clamp-2 text-sm text-muted-foreground">{comment.body}</p>
-                <Link
-                  to="/posts/$slug"
-                  params={{ slug: comment.postSlug }}
-                  className="mt-1 block text-xs text-primary hover:underline"
-                >
-                  {comment.authorName} · {comment.postTitle}
+                  <span className="min-w-0 truncate font-mono text-sm">{topic}</span>
+                  <Badge variant="secondary" className="tabular-nums">
+                    {count}
+                  </Badge>
                 </Link>
               </li>
             ))}
           </ul>
-        </section>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-md">
+        <CardHeader className="flex-row items-center justify-between space-y-0 p-4 pb-2">
+          <CardTitle className="font-sans text-sm">标签</CardTitle>
+          <Button asChild variant="link" className="h-auto p-0 text-xs text-muted-foreground">
+            <Link to="/tags">全部</Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2 p-4 pt-2">
+          {tagCloud.map((tag) => (
+            <Badge key={tag.slug} asChild variant="secondary">
+              <Link to="/tags/$tag" params={{ tag: tag.slug }}>
+                #{tag.name}
+              </Link>
+            </Badge>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-md">
+        <CardHeader className="p-4 pb-2">
+          <CardTitle className="font-sans text-sm">最新文章</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 pt-2">
+          <ul className="space-y-3">
+            {recent.map((post) => (
+              <li key={post.id} className="flex gap-3">
+                {post.coverImage ? (
+                  <Link to="/posts/$slug" params={{ slug: post.slug }} className="shrink-0">
+                    <img src={post.coverImage} alt="" loading="lazy" decoding="async" className="size-14 rounded-md object-cover" />
+                  </Link>
+                ) : null}
+                <div className="min-w-0">
+                  <Link
+                    to="/posts/$slug"
+                    params={{ slug: post.slug }}
+                    className="line-clamp-2 text-sm font-medium leading-snug hover:text-primary"
+                  >
+                    {post.title}
+                  </Link>
+                  <p className="mt-1 text-xs text-muted-foreground">{formatZhDate(post.publishedAt)}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      {recentComments.length ? (
+        <Card className="shadow-md">
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="font-sans text-sm">最新评论</CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 pt-2">
+            <ul className="space-y-3">
+              {recentComments.map((comment) => (
+                <li key={comment.id}>
+                  <p className="line-clamp-2 text-sm text-muted-foreground">{comment.body}</p>
+                  <Link
+                    to="/posts/$slug"
+                    params={{ slug: comment.postSlug }}
+                    className="mt-1 block truncate text-xs text-primary hover:underline"
+                  >
+                    {comment.authorName} · {comment.postTitle}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       ) : null}
     </aside>
   );

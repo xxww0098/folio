@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
+import { sweepGhostAttachmentsQuietly } from "@/lib/attachments/server";
 
 export type PhotoItem = {
   id: number;
@@ -69,5 +70,6 @@ export const deletePhoto = createServerFn({ method: "POST" })
   .handler(async ({ data: id }): Promise<{ ok: true }> => {
     const sql = await getSql();
     await sql`delete from photos where id = ${id}`;
+    await sweepGhostAttachmentsQuietly();
     return { ok: true };
   });

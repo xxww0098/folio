@@ -264,10 +264,17 @@ export function attachmentIdFromSrc(src) {
   } catch {
     /* keep raw */
   }
-  const match = /\/api\/files\/(\d+)\/?$/.exec(path);
-  if (!match) return null;
-  const id = Number(match[1]);
-  return Number.isInteger(id) && id > 0 ? id : null;
+  const file = /\/api\/files\/(\d+)(?:\/|$)/.exec(path);
+  if (file) {
+    const id = Number(file[1]);
+    return Number.isInteger(id) && id > 0 ? id : null;
+  }
+  const object = /(?:^|\/)attachments\/(\d+)(?:\/|$)/.exec(path);
+  if (object) {
+    const id = Number(object[1]);
+    return Number.isInteger(id) && id > 0 ? id : null;
+  }
+  return null;
 }
 
 /**
@@ -408,6 +415,43 @@ export async function deleteObjectBytes(config, key) {
 }
 
 /**
+ * @param {ObjectStorageConfig} config
+ * @param {string} [prefix]
+ * @returns {Promise<string[]>}
+ */
+export async function listObjectKeys(config, prefix) {
+  const client = await getS3Client(config);
+  const { ListObjectsV2Command } = await import("@aws-sdk/client-s3");
+  const p = String(prefix ?? config.prefix ?? "").replace(/^\/+|\/+$/g, "");
+  const listPrefix = p ? `${p}/attachments/` : "attachments/";
+  /** @type {string[]} */
+  const keys = [];
+  /** @type {string | undefined} */
+  let token;
+  try {
+    do {
+      const out = await client.send(
+        new ListObjectsV2Command({
+          Bucket: config.bucket,
+          Prefix: listPrefix,
+          ContinuationToken: token,
+          MaxKeys: 1000,
+        }),
+      );
+      for (const obj of out.Contents ?? []) {
+        if (obj.Key) keys.push(obj.Key);
+      }
+      token = out.IsTruncated ? out.NextContinuationToken : undefined;
+    } while (token);
+    return keys;
+  } catch (err) {
+    throw s3Error(err);
+  } finally {
+    client.destroy();
+  }
+}
+
+/**
  * @param {(text: string, params?: unknown[]) => Promise<Array<Record<string, unknown>>>} query
  * @param {NodeJS.ProcessEnv} [env]
  */
@@ -435,10 +479,11 @@ export async function pushPgBytesToS3(query, config) {
       (typeof row.object_key === "string" && row.object_key) ||
       objectKey(config.prefix, id, String(row.filename ?? "file"));
     try {
-      await putObjectBytes(config, { key, body: bytes, mime: String(row.mime_type ?? "application/octet-stream") });
+      await putObjectBytes(config, { key, body: bytes, mime: String(row.mime_type ?? "image/jpeg") });
+      const url = publicObjectUrlFromConfig(config, key) || `/api/files/${id}`;
       await query(
         `update attachments set object_key = $1, data = null, url = $2 where id = $3`,
-        [key, `/api/files/${id}`, id],
+        [key, url, id],
       );
       moved += 1;
     } catch (err) {

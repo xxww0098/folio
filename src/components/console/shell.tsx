@@ -1,15 +1,14 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
-import { Menu, Settings } from "lucide-react";
+import { Menu } from "lucide-react";
 import type { PostListItem } from "@/lib/blog/types";
 import type { Role } from "@/lib/roles";
 import type { WorkspaceArea } from "@/lib/workspace";
-import { workspacePath } from "@/lib/workspace";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ConsoleCommand } from "./command";
 import { SECTION_META, type ConsoleSection } from "./nav";
 import { ConsoleBrand, ConsoleSidebar } from "./sidebar";
+import { VisitSiteLink } from "./visit-site";
 
 export function ConsoleShell({
   area,
@@ -32,7 +31,6 @@ export function ConsoleShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const meta = SECTION_META[section];
   const TitleIcon = meta.icon;
-  const home = workspacePath(area);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -102,26 +100,22 @@ export function ConsoleShell({
             <h1 className="text-sm font-medium">{meta.label}</h1>
           </div>
 
-          <div className="ml-auto">
-            <Link
-              to={home}
-              search={{ section: "settings" }}
-              className="console-cta inline-flex h-9 items-center gap-1.5 rounded-lg bg-console-settings px-3 text-sm font-medium text-white transition-opacity duration-150 hover:opacity-90"
-            >
-              <Settings className="size-4" />
-              设置
-            </Link>
-          </div>
+          <VisitSiteLink className="ml-auto h-9 rounded-lg border border-console-line px-3 hover:bg-console-active" />
         </header>
 
-        <main className={cn("flex min-h-0 flex-1 flex-col", writing ? "overflow-hidden p-0" : "px-4 pb-10 sm:px-6")}>
+        <main
+          className={cn(
+            "min-h-0 flex-1",
+            writing ? "flex flex-col overflow-hidden p-0" : "overflow-y-auto px-4 pb-10 sm:px-6",
+          )}
+        >
           {writing ? null : (
-            <h1 className="mb-4 flex items-center gap-2 text-sm font-medium text-console-ink lg:hidden">
+            <h1 className="mx-auto mb-4 flex w-full max-w-5xl items-center gap-2 text-sm font-medium text-console-ink lg:hidden">
               <TitleIcon className="size-4 text-console-nav" />
               {meta.label}
             </h1>
           )}
-          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          <div className={writing ? "flex min-h-0 flex-1 flex-col" : "mx-auto w-full max-w-5xl"}>{children}</div>
           {writing ? null : <p className="mt-10 text-center text-xs text-console-muted">Powered by 折页 Folio</p>}
         </main>
       </div>

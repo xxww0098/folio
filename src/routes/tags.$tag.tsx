@@ -1,6 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArticleCard } from "@/components/article-card";
+import { PostFeed } from "@/components/post-feed";
 import { SiteShell, siteChromeProps } from "@/components/site-shell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { getSiteChrome, listPostsByTag } from "@/lib/blog/server";
 
 export const Route = createFileRoute("/tags/$tag")({
@@ -16,21 +25,37 @@ export const Route = createFileRoute("/tags/$tag")({
 
 function TagPage() {
   const { chrome, tag, posts } = Route.useLoaderData();
+  const label = tag ? `#${tag.name}` : "未知标签";
   return (
     <SiteShell {...siteChromeProps(chrome)} sidebar>
-      <p className="text-sm text-muted-foreground">标签</p>
-      <h1 className="mt-1 text-2xl font-semibold tracking-tight">{tag ? `#${tag.name}` : "未知标签"}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        <Link to="/tags" className="text-primary hover:underline">
-          全部标签
-        </Link>
-      </p>
-      <div className="mt-6 grid grid-cols-1 gap-6">
-        {posts.map((post) => (
-          <ArticleCard key={post.id} post={post} />
-        ))}
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/">首页</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link to="/tags">标签</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{label}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+      <h1 className="mt-3 text-2xl font-semibold tracking-tight">{label}</h1>
+      <div className="mt-6">
+        <PostFeed posts={posts} />
       </div>
-      {posts.length === 0 ? <p className="mt-10 text-sm text-muted-foreground">这个标签还没有文章。</p> : null}
+      {posts.length === 0 ? (
+        <Alert variant="muted" className="mt-10">
+          <AlertDescription>这个标签还没有文章。</AlertDescription>
+        </Alert>
+      ) : null}
     </SiteShell>
   );
 }

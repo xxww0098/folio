@@ -1,9 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { SiteShell, siteChromeProps } from "@/components/site-shell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { getSiteChrome } from "@/lib/blog/server";
-import { TOPICS, type PostListItem } from "@/lib/blog/types";
+import { type PostListItem } from "@/lib/blog/types";
 import { formatZhDate } from "@/lib/format";
 import { requirePublicPage } from "@/lib/pages/server";
 
@@ -41,51 +46,61 @@ function ArchivePage() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="搜索文章"
-          className="max-w-sm bg-card"
+          className="max-w-sm"
         />
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {["全部", ...TOPICS].map((item) => (
-          <button
-            key={item}
-            type="button"
-            onClick={() => setTopic(item)}
-            className={
-              item === topic
-                ? "inline-flex h-9 items-center rounded-full bg-primary px-3 font-mono text-xs text-primary-foreground"
-                : "inline-flex h-9 items-center rounded-full bg-card px-3 font-mono text-xs text-muted-foreground shadow-md hover:text-foreground"
-            }
-          >
+      <ToggleGroup
+        type="single"
+        value={topic}
+        onValueChange={(value) => {
+          if (value) setTopic(value);
+        }}
+        variant="outline"
+        size="sm"
+        className="mt-4 flex flex-wrap justify-start gap-2"
+      >
+        {["全部", ...chrome.topics].map((item) => (
+          <ToggleGroupItem key={item} value={item} className="rounded-full font-mono">
             {item}
-          </button>
+          </ToggleGroupItem>
         ))}
-      </div>
-      <div className="mt-8 space-y-10">
+      </ToggleGroup>
+      <div className="mt-8 space-y-8">
         {grouped.map(([year, items]) => (
-          <section key={year}>
-            <h2 className="mb-4 text-lg font-semibold">{year}</h2>
-            <ul className="divide-y divide-border overflow-hidden rounded-xl bg-card shadow-md">
-              {items.map((post) => (
-                <li key={post.id} className="flex flex-col gap-1 px-5 py-4 sm:flex-row sm:items-baseline sm:justify-between">
-                  <Link to="/posts/$slug" params={{ slug: post.slug }} className="font-medium hover:text-primary">
-                    {post.title}
-                  </Link>
-                  <span className="text-xs text-muted-foreground">
-                    {post.topic} · {formatZhDate(post.publishedAt)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
+          <Card key={year} className="overflow-hidden shadow-md">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="font-sans text-lg">{year}</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableBody>
+                  {items.map((post) => (
+                    <TableRow key={post.id} className="border-border hover:bg-secondary/60">
+                      <TableCell>
+                        <Link to="/posts/$slug" params={{ slug: post.slug }} className="font-medium hover:text-primary">
+                          {post.title}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right text-xs text-muted-foreground">
+                        {post.topic} · {formatZhDate(post.publishedAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         ))}
       </div>
       {filtered.length === 0 ? (
-        <p className="mt-10 text-sm text-muted-foreground">
-          没有匹配的文章。
-          <Link to="/" className="ml-2 text-primary hover:underline">
-            返回首页
-          </Link>
-        </p>
+        <Alert variant="muted" className="mt-10">
+          <AlertDescription>
+            没有匹配的文章。
+            <Button asChild variant="link" className="h-auto px-1">
+              <Link to="/">返回首页</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
       ) : null}
     </SiteShell>
   );

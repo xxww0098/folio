@@ -92,21 +92,9 @@ docker compose exec -T folio node scripts/import-db.mjs < folio.json
 
 ### 对象存储（可选）
 
-不配则图片写进 Postgres。图多了可以改成 S3 兼容存储：Cloudflare R2、MinIO、阿里云 OSS、AWS S3。
+图片默认写进 Postgres。图多了可以改成 S3 兼容存储（Cloudflare R2、MinIO、阿里云 OSS、AWS S3）。
 
-控制台 → **存储** 填写 Endpoint / 桶 / 密钥，或在 `.env` 里设置：
-
-| 变量 | 说明 |
-| --- | --- |
-| `FOLIO_S3_ENDPOINT` | 例如 `https://<id>.r2.cloudflarestorage.com` 或 `http://minio:9000` |
-| `FOLIO_S3_BUCKET` | 桶名 |
-| `FOLIO_S3_REGION` | R2 用 `auto`；AWS 填区域 |
-| `FOLIO_S3_ACCESS_KEY` / `FOLIO_S3_SECRET_KEY` | 密钥 |
-| `FOLIO_S3_FORCE_PATH_STYLE` | MinIO 设 `true`；AWS / OSS 一般 `false` |
-| `FOLIO_S3_PUBLIC_URL` | 可选。桶的公开/CDN 前缀，填了之后读图会 302 过去 |
-| `FOLIO_S3_PREFIX` | 对象键前缀，默认 `folio` |
-
-页面上保存的设置优先于环境变量。文章里的图片地址默认仍是 `/api/files/{id}`。写文章时把鼠标放到图上，或右键，可以改成对象存储的公开地址。已有图片用同一页的「迁到对象存储 / 收回数据库」。
+打开控制台 → **系统 → 设置 → 对象存储**，填写 Endpoint、桶和密钥。不要写进 `.env`。已有图片可用同一页迁到对象存储。
 
 ### 2. 从 GitHub Release 升级
 
@@ -122,8 +110,8 @@ docker compose exec -T folio node scripts/import-db.mjs < folio.json
 脚本会把 `.env` 里的 `FOLIO_VERSION` 写成最新 tag，再 `docker compose pull && up`。指定版本：
 
 ```sh
-FOLIO_VERSION=v0.1.6 docker compose pull folio
-FOLIO_VERSION=v0.1.6 docker compose up -d
+FOLIO_VERSION=v0.1.7 docker compose pull folio
+FOLIO_VERSION=v0.1.7 docker compose up -d
 ```
 
 控制台页会显示当前版本；GitHub 上有更新时会提示跑上面的脚本。
@@ -144,26 +132,26 @@ docker compose up -d
 ### 3. 发布新版本（维护者）
 
 ```sh
-git tag v0.1.6
-git push origin v0.1.6
+git tag v0.1.7
+git push origin v0.1.7
 ```
 
 推送 `v*` 标签后，GitHub Actions 会：构建 `amd64` / `arm64` 镜像 → 推送到 GHCR → 创建 GitHub Release。
 
 ## 本地开发
 
-需要 Node.js 22。
+需要 [Bun](https://bun.sh) 1.2+。
 
 ```sh
-npm ci
-VITE_AUTH_ENABLED=true VITE_FOLIO_EMAIL_PASSWORD=true npm run dev
+bun install
+VITE_AUTH_ENABLED=true VITE_FOLIO_EMAIL_PASSWORD=true bun run dev
 ```
 
 开发服默认 `0.0.0.0:8080`。不设 `DATABASE_URL` 时用内嵌 PGLite；设了则连 Postgres。
 
 ```sh
-npm run typecheck
-npm run test
+bun run typecheck
+bun run test
 ```
 
 ## 环境变量
@@ -193,7 +181,8 @@ Vite 变量在构建时打进前端，改它们必须重新 `docker compose buil
 ### Agent / MCP
 
 Streamable HTTP 端点：`POST /api/mcp`  
-请求头：`Authorization: Bearer folio_…`
+协议只认 **2026-07-28**：无会话、无 `initialize`，先调 `server/discover`。  
+请求头：`Authorization: Bearer folio_…`、`MCP-Protocol-Version: 2026-07-28`
 
 Cursor 示例：
 
@@ -203,7 +192,8 @@ Cursor 示例：
     "folio": {
       "url": "https://你的站点/api/mcp",
       "headers": {
-        "Authorization": "Bearer folio_你的令牌"
+        "Authorization": "Bearer folio_你的令牌",
+        "MCP-Protocol-Version": "2026-07-28"
       }
     }
   }

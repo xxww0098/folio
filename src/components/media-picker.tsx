@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { listAttachments, uploadAttachment, type AttachmentItem } from "@/lib/attachments/server";
-import { Button } from "@/components/ui/button";
+import { deleteAttachment, listAttachments, uploadAttachment, type AttachmentItem } from "@/lib/attachments/server";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 export function MediaPicker({
@@ -15,6 +14,7 @@ export function MediaPicker({
 }) {
   const [items, setItems] = useState<AttachmentItem[]>([]);
   const [pending, setPending] = useState(false);
+  const [busyId, setBusyId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -46,17 +46,30 @@ export function MediaPicker({
     }
   }
 
+  async function onDelete(id: number) {
+    setBusyId(id);
+    try {
+      await deleteAttachment({ data: id });
+      setItems((current) => current.filter((item) => item.id !== id));
+      toast.success("已删除");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "无法删除");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogTitle>附件库</DialogTitle>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="text-sm text-muted-foreground">选择一张图，或上传新的（2 MB 内）。</p>
+          <p className="text-sm text-muted-foreground">选择一张图，或上传新的（含 GIF，8 MB 内）。未引用的图可以删掉。</p>
           <label className="inline-flex h-11 cursor-pointer items-center rounded-md bg-primary px-3 text-sm text-primary-foreground">
             {pending ? "上传中…" : "上传图片"}
             <input
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
+              accept="image/jpeg,image/png,image/webp,image/gif,.gif"
               className="hidden"
               disabled={pending}
               onChange={(event) => void onFile(event.target.files?.[0])}
@@ -65,7 +78,7 @@ export function MediaPicker({
         </div>
         <ul className="mt-4 grid max-h-80 grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3">
           {items.map((item) => (
-            <li key={item.id}>
+            <li key={item.id} className="relative">
               <button
                 type="button"
                 className="w-full overflow-hidden rounded-lg bg-secondary text-left"
@@ -75,8 +88,25 @@ export function MediaPicker({
                 }}
               >
                 <img src={item.url} alt={item.alt} className="aspect-16/10 w-full object-cover" />
-                <span className="block truncate px-2 py-1.5 text-xs">{item.alt || item.filename}</span>
+                <span className="block truncate px-2 py-1.5 text-xs">
+                  {item.alt || item.filename}
+                  {item.stored && !item.referenced ? " · 未引用" : ""}
+                </span>
               </button>
+              {item.stored && !item.referenced ? (
+                <button
+                  type="button"
+                  className="absolute right-1.5 top-1.5 rounded bg-background/90 px-1.5 py-0.5 text-xs text-muted-foreground hover:text-destructive"
+                  disabled={busyId === item.id}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    void onDelete(item.id);
+                  }}
+                >
+                  {busyId === item.id ? "…" : "删除"}
+                </button>
+              ) : null}
             </li>
           ))}
         </ul>

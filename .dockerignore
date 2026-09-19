@@ -21,6 +21,9 @@ AGENTS.md
 startup.sh
 .project_id
 .node_modules.lock
+package-lock.json
+npm-debug.log*
+
 docker-compose.override.yml
 public/__grok
 coverage

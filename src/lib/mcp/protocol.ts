@@ -1,26 +1,37 @@
-export const MCP_PROTOCOL_VERSION = "2025-03-26";
+export const MCP_PROTOCOL_VERSION = "2026-07-28";
 export const MCP_SERVER_NAME = "folio";
-export const MCP_SERVER_VERSION = "1.1.0";
+export const MCP_SERVER_VERSION = "1.3.0";
 
-const SUPPORTED_VERSIONS = new Set([
-  "2024-11-05",
-  "2025-03-26",
-  "2025-11-25",
-  "2026-07-28",
-]);
+export const MCP_SUPPORTED_VERSIONS = [MCP_PROTOCOL_VERSION] as const;
+export type McpProtocolVersion = (typeof MCP_SUPPORTED_VERSIONS)[number];
 
-export function pickProtocolVersion(requested: unknown): string {
-  if (typeof requested === "string" && SUPPORTED_VERSIONS.has(requested)) return requested;
+const SUPPORTED_VERSIONS = new Set<string>(MCP_SUPPORTED_VERSIONS);
+
+export const MCP_META = {
+  protocolVersion: "io.modelcontextprotocol/protocolVersion",
+  clientInfo: "io.modelcontextprotocol/clientInfo",
+  clientCapabilities: "io.modelcontextprotocol/clientCapabilities",
+  serverInfo: "io.modelcontextprotocol/serverInfo",
+  logLevel: "io.modelcontextprotocol/logLevel",
+} as const;
+
+export function isSupportedVersion(value: string): value is McpProtocolVersion {
+  return SUPPORTED_VERSIONS.has(value);
+}
+
+export function pickProtocolVersion(requested: unknown): McpProtocolVersion {
+  if (typeof requested === "string" && isSupportedVersion(requested)) return requested;
   return MCP_PROTOCOL_VERSION;
 }
 
-export type JsonRpcId = string | number | null;
+export type JsonRpcId = string | number;
 
 export type JsonRpcRequest = {
   jsonrpc?: string;
-  id?: JsonRpcId;
+  id?: JsonRpcId | null;
   method?: unknown;
   params?: unknown;
+  _meta?: unknown;
 };
 
 export type JsonRpcError = {
@@ -31,7 +42,7 @@ export type JsonRpcError = {
 
 export type JsonRpcResponse = {
   jsonrpc: "2.0";
-  id: JsonRpcId;
+  id: JsonRpcId | null;
   result?: unknown;
   error?: JsonRpcError;
 };
@@ -51,14 +62,24 @@ export const RPC = {
   INVALID_PARAMS: -32602,
   INTERNAL: -32603,
   UNAUTHORIZED: -32001,
+  HEADER_MISMATCH: -32020,
+  MISSING_CAPABILITY: -32021,
+  UNSUPPORTED_VERSION: -32022,
 } as const;
 
-export function rpcError(id: JsonRpcId, code: number, message: string, data?: unknown): JsonRpcResponse {
+export function rpcError(id: JsonRpcId | null, code: number, message: string, data?: unknown): JsonRpcResponse {
   return { jsonrpc: "2.0", id, error: data === undefined ? { code, message } : { code, message, data } };
 }
 
-export function rpcResult(id: JsonRpcId, result: unknown): JsonRpcResponse {
+export function rpcResult(id: JsonRpcId | null, result: unknown): JsonRpcResponse {
   return { jsonrpc: "2.0", id, result };
+}
+
+export function unsupportedVersionError(id: JsonRpcId | null, requested: string): JsonRpcResponse {
+  return rpcError(id, RPC.UNSUPPORTED_VERSION, "不支持这个协议版本", {
+    supported: [...MCP_SUPPORTED_VERSIONS],
+    requested,
+  });
 }
 
 export function isNotification(message: JsonRpcRequest) {

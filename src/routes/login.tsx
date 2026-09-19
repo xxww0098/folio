@@ -5,6 +5,7 @@ import { GROK_PROVIDERS, authClient, authEnabled, signIn } from "@/lib/auth/clie
 import { emailAndPasswordEnabled } from "@/lib/auth/email-password";
 import { SignInGate } from "@/lib/auth/gates";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -59,18 +60,20 @@ function Login() {
   return (
     <SiteShell posts={posts} pages={pages}>
       <div className="mx-auto grid min-h-[70vh] max-w-md place-items-center px-4 py-16">
-        <div className="w-full rounded-xl bg-card p-8 shadow-md">
-          <div className="mb-5 flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <FolioMark className="size-5" />
-            </span>
-            <span className="font-semibold">折页</span>
-          </div>
-          <h1 className="text-2xl font-semibold">{registering ? "注册" : "登录"}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            {registering ? "注册后可评论、开通会员阅读付费文章。" : "欢迎回来。没有账号就先注册。"}
-          </p>
-          <div className="mt-6">
+        <Card className="w-full shadow-md">
+          <CardHeader>
+            <div className="mb-1 flex items-center gap-2">
+              <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <FolioMark className="size-4" />
+              </span>
+              <span className="font-semibold">折页</span>
+            </div>
+            <h1 className="font-sans text-2xl font-medium leading-tight">{registering ? "注册" : "登录"}</h1>
+            <CardDescription>
+              {registering ? "注册后可评论、开通会员阅读付费文章。" : "欢迎回来。没有账号就先注册。"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             <SignInGate
               fallback={
                 <SignInOptions
@@ -92,8 +95,8 @@ function Login() {
                 <a href={signedInHome}>继续</a>
               </Button>
             </SignInGate>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </SiteShell>
   );

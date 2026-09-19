@@ -1,6 +1,8 @@
-import { Check, Monitor, Moon, Palette, Sun } from "lucide-react";
+import { Check, LayoutGrid, List, Monitor, Moon, Newspaper, Palette, Rows3, Sun } from "lucide-react";
 import { THEMES, THEME_MODES, MODE_LABEL, type ThemeMode } from "@/lib/theme/catalog";
+import { LAYOUTS, type LayoutId } from "@/lib/theme/layout";
 import { useTheme } from "@/lib/theme/provider";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const MODE_ICON: Record<ThemeMode, typeof Sun> = {
   light: Sun,
@@ -17,42 +19,80 @@ const MODE_ICON: Record<ThemeMode, typeof Sun> = {
   system: Monitor,
 };
 
+const LAYOUT_ICON: Record<LayoutId, typeof Rows3> = {
+  stack: Rows3,
+  grid: LayoutGrid,
+  magazine: Newspaper,
+  stream: List,
+};
+
 export function ThemeToggle() {
-  const { skin, mode, setSkin, setMode } = useTheme();
+  const { skin, mode, layout, setSkin, setMode, setLayout } = useTheme();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
+        <Button
           type="button"
-          className="grid size-11 place-items-center rounded-md text-header-foreground/80 transition-colors duration-150 hover:bg-header-foreground/10 hover:text-header-foreground"
+          variant="ghost"
+          size="icon"
           aria-label="主题与外观"
+          className="text-header-foreground/80 hover:bg-header-foreground/10 hover:text-header-foreground"
         >
           <Palette className="size-5" />
-        </button>
+        </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64 p-1.5">
+      <DropdownMenuContent align="end" className="w-64 max-w-[calc(100vw-1.5rem)] p-1.5">
         <DropdownMenuLabel>外观</DropdownMenuLabel>
-        <div className="mb-1 grid grid-cols-3 gap-1 px-1">
+        <ToggleGroup
+          type="single"
+          value={mode}
+          onValueChange={(value) => {
+            if (value) setMode(value as ThemeMode);
+          }}
+          variant="outline"
+          size="sm"
+          className="mb-1 grid w-full grid-cols-3 gap-1 px-1"
+        >
           {THEME_MODES.map((item) => {
             const Icon = MODE_ICON[item];
-            const active = mode === item;
             return (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setMode(item)}
-                className={cn(
-                  "inline-flex h-9 items-center justify-center gap-1 rounded-md text-xs transition-colors duration-150",
-                  active ? "bg-secondary font-medium text-foreground" : "text-muted-foreground hover:bg-secondary/70",
-                )}
-              >
+              <ToggleGroupItem key={item} value={item} className="h-9 gap-1">
                 <Icon className="size-3.5" />
                 {MODE_LABEL[item]}
-              </button>
+              </ToggleGroupItem>
             );
           })}
-        </div>
+        </ToggleGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>布局</DropdownMenuLabel>
+        <ToggleGroup
+          type="single"
+          value={layout}
+          onValueChange={(value) => {
+            if (value) setLayout(value as LayoutId);
+          }}
+          variant="outline"
+          size="sm"
+          className="mb-1 grid w-full grid-cols-2 gap-1 px-1 pb-1"
+        >
+          {LAYOUTS.map((item) => {
+            const Icon = LAYOUT_ICON[item.id];
+            return (
+              <ToggleGroupItem
+                key={item.id}
+                value={item.id}
+                className="h-14 flex-col items-start justify-center gap-0.5 px-2.5"
+              >
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium">
+                  <Icon className="size-3.5" />
+                  {item.name}
+                </span>
+                <span className="text-[11px] font-normal text-muted-foreground">{item.hint}</span>
+              </ToggleGroupItem>
+            );
+          })}
+        </ToggleGroup>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>皮肤</DropdownMenuLabel>
         {THEMES.map((theme) => {

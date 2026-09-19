@@ -31,12 +31,20 @@ export const Route = createFileRoute("/sitemap.xml")({
             .map(([, meta]) => meta.path),
         ];
         const urls = [
-          ...staticPaths.map((path) => `${origin}${path}`),
-          ...posts.map((post) => `${origin}/posts/${post.slug}`),
+          ...staticPaths.map((path) => ({ loc: `${origin}${path}`, lastmod: "" })),
+          ...posts.map((post) => ({
+            loc: `${origin}/posts/${post.slug}`,
+            lastmod: post.publishedAt ? new Date(post.publishedAt).toISOString() : "",
+          })),
         ];
         const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((loc) => `<url><loc>${escapeXml(loc)}</loc></url>`).join("\n")}
+${urls
+  .map(
+    (item) =>
+      `<url><loc>${escapeXml(item.loc)}</loc>${item.lastmod ? `<lastmod>${escapeXml(item.lastmod)}</lastmod>` : ""}</url>`,
+  )
+  .join("\n")}
 </urlset>`;
         return new Response(body, {
           headers: {

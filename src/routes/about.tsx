@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteShell, siteChromeProps } from "@/components/site-shell";
+import { Button } from "@/components/ui/button";
+import { Card, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { getSiteChrome } from "@/lib/blog/server";
 
 export const Route = createFileRoute("/about")({
@@ -12,28 +14,24 @@ function AboutPage() {
 
   return (
     <SiteShell {...siteChromeProps(chrome)} sidebar>
-      <article className="overflow-hidden rounded-xl bg-card p-6 shadow-md sm:p-8">
-        <h1 className="text-2xl font-semibold tracking-tight">关于折页</h1>
-        <p className="mt-6 text-base leading-relaxed text-foreground/90">
-          写给工程师的独立博客。栏目按语言分，正文带可运行的代码。登录后可评论、开通会员阅读付费文章。
-        </p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            to="/membership"
-            className="inline-flex h-11 items-center rounded-md bg-primary px-4 text-sm text-primary-foreground transition-transform duration-150 ease-out active:scale-[0.96]"
-          >
-            会员
-          </Link>
-          <a
-            href="https://github.com/xxww0098/folio"
-            className="inline-flex h-11 items-center rounded-md border border-border px-4 text-sm"
-            target="_blank"
-            rel="noreferrer"
-          >
-            GitHub
-          </a>
-        </div>
-      </article>
+      <Card className="shadow-md">
+        <CardHeader className="p-6 sm:p-8">
+          <h1 className="font-sans text-2xl font-semibold tracking-tight">关于折页</h1>
+          <CardDescription className="mt-4 text-base leading-relaxed text-foreground/90">
+            写给工程师的独立博客。栏目按语言分，正文带可运行的代码。登录后可评论、开通会员阅读付费文章。
+          </CardDescription>
+        </CardHeader>
+        <CardFooter className="flex flex-wrap gap-3 px-6 pb-6 sm:px-8 sm:pb-8">
+          <Button asChild>
+            <Link to="/membership">会员</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <a href="https://github.com/xxww0098/folio" target="_blank" rel="noreferrer">
+              GitHub
+            </a>
+          </Button>
+        </CardFooter>
+      </Card>
     </SiteShell>
   );
 }

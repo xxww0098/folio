@@ -1,4 +1,4 @@
-import { isTopic, type Topic } from "@/lib/blog/types";
+import type { Topic } from "@/lib/blog/types";
 import { clampExclusiveDays, isAccessMode, type AccessMode } from "@/lib/membership/access";
 
 export type FolioMatter = {
@@ -70,9 +70,8 @@ export function serializeNote(matter: FolioMatter, body: string): string {
 }
 
 export function topicFromMatter(matter: FolioMatter, fallback: Topic): Topic {
-  const candidate = matter.topic || matter.categories?.[0];
-  if (candidate && isTopic(candidate)) return candidate;
-  return fallback;
+  const candidate = (matter.topic || matter.categories?.[0] || "").trim();
+  return candidate || fallback;
 }
 
 export function excerptFrom(matter: FolioMatter, body: string): string {

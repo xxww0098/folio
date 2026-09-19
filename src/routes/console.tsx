@@ -29,7 +29,7 @@ export const Route = createFileRoute("/console")({
   head: ({ loaderData }) => ({
     meta: [{ title: loaderData ? "控制台 - 折页" : "折页 Folio" }],
   }),
-  notFoundComponent: MissingPage,
+  notFoundComponent: () => <MissingPage />,
   component: ConsolePage,
 });
 

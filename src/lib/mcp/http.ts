@@ -7,54 +7,60 @@ import { MCP_PROTOCOL_VERSION, type JsonRpcResponse } from "./protocol";
 export const MCP_CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "Authorization, Content-Type, Accept, MCP-Protocol-Version, Mcp-Session-Id, Mcp-Method, Mcp-Name, Last-Event-ID",
-  "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-  "Access-Control-Expose-Headers": "Mcp-Session-Id, MCP-Protocol-Version",
+    "Authorization, Content-Type, Accept, MCP-Protocol-Version, Mcp-Method, Mcp-Name",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Expose-Headers": "MCP-Protocol-Version",
 };
 
 export function mcpPreflight() {
   return new Response(null, { status: 204, headers: MCP_CORS });
 }
 
-export function mcpJson(body: unknown, status: number, sessionId?: string) {
-  const headers = new Headers({
-    ...MCP_CORS,
-    "Content-Type": "application/json; charset=utf-8",
-    "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+export function mcpJson(body: unknown, status: number) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      ...MCP_CORS,
+      "Content-Type": "application/json; charset=utf-8",
+      "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+    },
   });
-  if (sessionId) headers.set("Mcp-Session-Id", sessionId);
-  return new Response(JSON.stringify(body), { status, headers });
 }
 
-export function mcpAccepted(sessionId: string) {
-  const headers = new Headers({
-    ...MCP_CORS,
-    "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
-    "Mcp-Session-Id": sessionId,
+export function mcpAccepted() {
+  return new Response(null, {
+    status: 202,
+    headers: {
+      ...MCP_CORS,
+      "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+    },
   });
-  return new Response(null, { status: 202, headers });
 }
 
 export function mcpUnauthorized(body?: JsonRpcResponse) {
-  const headers = new Headers({
-    ...MCP_CORS,
-    "Content-Type": "application/json; charset=utf-8",
-    "WWW-Authenticate": 'Bearer realm="folio"',
-    "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+  return new Response(JSON.stringify(body ?? unauthorizedResponse(null)), {
+    status: 401,
+    headers: {
+      ...MCP_CORS,
+      "Content-Type": "application/json; charset=utf-8",
+      "WWW-Authenticate": 'Bearer realm="folio"',
+      "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+    },
   });
-  return new Response(JSON.stringify(body ?? unauthorizedResponse(null)), { status: 401, headers });
 }
 
 export function mcpTooMany(retryAfterSec: number) {
-  const headers = new Headers({
-    ...MCP_CORS,
-    "Content-Type": "application/json; charset=utf-8",
-    "Retry-After": String(retryAfterSec),
-    "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
-  });
   return new Response(
     JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32000, message: "尝试过多，请稍后再试" } }),
-    { status: 429, headers },
+    {
+      status: 429,
+      headers: {
+        ...MCP_CORS,
+        "Content-Type": "application/json; charset=utf-8",
+        "Retry-After": String(retryAfterSec),
+        "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+      },
+    },
   );
 }
 

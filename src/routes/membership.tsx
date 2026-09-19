@@ -3,6 +3,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { SiteShell } from "@/components/site-shell";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { listPublishedPosts } from "@/lib/blog/server";
 import { getFrontPages } from "@/lib/pages/server";
@@ -71,42 +73,46 @@ function MembershipPage() {
         </p>
 
         {membership.isPaid ? (
-          <div className="mt-8 rounded-xl bg-card p-5 shadow-md">
-            <p className="text-sm font-medium text-primary">已开通 · {membership.planLabel}</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {membership.expiresAt
-                ? `有效至 ${formatZhDate(membership.expiresAt)}，剩 ${membership.remainingDays} 天。`
-                : "长期有效。"}
-            </p>
+          <Card className="mt-8 shadow-md">
+            <CardHeader>
+              <CardTitle className="font-sans text-sm text-primary">已开通 · {membership.planLabel}</CardTitle>
+              <CardDescription>
+                {membership.expiresAt
+                  ? `有效至 ${formatZhDate(membership.expiresAt)}，剩 ${membership.remainingDays} 天。`
+                  : "长期有效。"}
+              </CardDescription>
+            </CardHeader>
             {next ? (
-              <Button asChild className="mt-4">
-                <a href={next}>{next.startsWith("/posts/") ? "返回文章" : "继续"}</a>
-              </Button>
+              <CardFooter>
+                <Button asChild>
+                  <a href={next}>{next.startsWith("/posts/") ? "返回文章" : "继续"}</a>
+                </Button>
+              </CardFooter>
             ) : null}
-          </div>
+          </Card>
         ) : (
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {PLANS.map((plan) => (
-              <article key={plan.id} className="flex flex-col rounded-xl bg-card p-5 shadow-md">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold">{plan.label}</h2>
-                  {"discountLabel" in plan && plan.discountLabel ? (
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                      {plan.discountLabel}
-                    </span>
-                  ) : null}
-                </div>
-                <p className="mt-1 text-3xl font-semibold tracking-tight">
-                  {"originalPrice" in plan && plan.originalPrice ? (
-                    <span className="mr-2 text-base font-normal text-muted-foreground line-through">
-                      ¥{formatPlanPrice(plan.originalPrice)}
-                    </span>
-                  ) : null}
-                  ¥{formatPlanPrice(plan.price)}
-                  <span className="ml-1 text-sm font-normal text-muted-foreground">/ {plan.days} 天</span>
-                </p>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{plan.blurb}</p>
-                <div className="mt-auto pt-5">
+              <Card key={plan.id} className="flex flex-col shadow-md">
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="font-sans text-lg">{plan.label}</CardTitle>
+                    {"discountLabel" in plan && plan.discountLabel ? (
+                      <Badge variant="default">{plan.discountLabel}</Badge>
+                    ) : null}
+                  </div>
+                  <p className="text-3xl font-semibold tracking-tight">
+                    {"originalPrice" in plan && plan.originalPrice ? (
+                      <span className="mr-2 text-base font-normal text-muted-foreground line-through">
+                        ¥{formatPlanPrice(plan.originalPrice)}
+                      </span>
+                    ) : null}
+                    ¥{formatPlanPrice(plan.price)}
+                    <span className="ml-1 text-sm font-normal text-muted-foreground">/ {plan.days} 天</span>
+                  </p>
+                  <CardDescription>{plan.blurb}</CardDescription>
+                </CardHeader>
+                <CardFooter className="mt-auto">
                   {isPending ? (
                     <Button className="w-full" disabled>
                       开通
@@ -130,8 +136,8 @@ function MembershipPage() {
                       </Button>
                     </SignInGate>
                   )}
-                </div>
-              </article>
+                </CardFooter>
+              </Card>
             ))}
           </div>
         )}
@@ -141,8 +147,11 @@ function MembershipPage() {
           <code className="rounded bg-secondary px-1 py-0.5 font-mono text-[11px]">FOLIO-TECH</code>
         </p>
 
-        <div className="mt-8 rounded-xl bg-card p-5 shadow-md">
-          <h2 className="text-base font-semibold">兑换码</h2>
+        <Card className="mt-8 shadow-md">
+          <CardHeader>
+            <CardTitle className="font-sans text-base">兑换码</CardTitle>
+          </CardHeader>
+          <CardContent>
           {user ? (
             <form
               className="mt-4 flex flex-col gap-2 sm:flex-row"
@@ -163,18 +172,20 @@ function MembershipPage() {
               </Button>
             </form>
           ) : (
-            <Button asChild className="mt-4" variant="outline">
+            <Button asChild variant="outline">
               <Link to="/login" search={{ next: "/membership" }}>
                 登录后兑换
               </Link>
             </Button>
           )}
-        </div>
+          </CardContent>
+        </Card>
 
         {exclusive.length ? (
           <section className="mt-10">
             <h2 className="text-base font-semibold">当前抢先 / 专享</h2>
-            <ul className="mt-4 divide-y divide-border overflow-hidden rounded-xl bg-card shadow-md">
+            <Card className="mt-4 overflow-hidden shadow-md">
+              <ul className="divide-y divide-border">
               {exclusive.map((post) => (
                 <li key={post.id}>
                   <Link
@@ -194,6 +205,7 @@ function MembershipPage() {
                 </li>
               ))}
             </ul>
+            </Card>
           </section>
         ) : null}
       </div>

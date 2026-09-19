@@ -96,7 +96,6 @@ export const CONSOLE_NAV: ConsoleNavGroup[] = [
       { id: "obsidian", label: "Obsidian", icon: BookOpen, section: "obsidian" },
       { id: "agent", label: "Agent", icon: Bot, section: "agent" },
       { id: "plans", label: "会员", icon: Sparkles, section: "plans" },
-      { id: "settings", label: "设置", icon: Settings, section: "settings" },
     ],
   },
   {
@@ -113,6 +112,7 @@ export const CONSOLE_NAV: ConsoleNavGroup[] = [
     items: [
       { id: "members", label: "用户", icon: Users, section: "members" },
       { id: "backup", label: "备份", icon: Puzzle, section: "backup" },
+      { id: "settings", label: "设置", icon: Settings, section: "settings" },
     ],
   },
 ];
@@ -176,11 +176,12 @@ export const CONSOLE_COMMAND_ITEMS: CommandItem[] = [
   { id: "agent", label: "Agent", hint: "写作", section: "agent" },
   { id: "plans", label: "会员", hint: "系统", section: "plans" },
   { id: "settings", label: "设置", hint: "系统", section: "settings" },
+  { id: "storage", label: "对象存储", hint: "系统", section: "settings" },
   { id: "appearance", label: "主题", hint: "外观", section: "appearance" },
   { id: "links", label: "友链", hint: "外观", section: "links" },
   { id: "members", label: "用户", hint: "系统", section: "members" },
   { id: "backup", label: "备份", hint: "系统", section: "backup" },
-  { id: "site", label: "查看站点", hint: "前台", href: "/" },
+  { id: "site", label: "访问博客", hint: "新标签打开前台", href: "/" },
   { id: "me", label: "个人中心", hint: "账户", href: "/me" },
 ];
 
@@ -190,7 +191,7 @@ export const ME_COMMAND_ITEMS: CommandItem[] = [
   { id: "appearance", label: "主题", hint: "账户", section: "appearance" },
   { id: "membership", label: "会员", hint: "账户", href: "/membership" },
   { id: "settings", label: "设置", hint: "账户", section: "settings" },
-  { id: "site", label: "查看站点", hint: "前台", href: "/" },
+  { id: "site", label: "访问博客", hint: "新标签打开前台", href: "/" },
 ];
 
 export const COMMAND_ITEMS = CONSOLE_COMMAND_ITEMS;

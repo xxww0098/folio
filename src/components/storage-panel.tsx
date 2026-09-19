@@ -11,6 +11,7 @@ import {
   testStorageSettings,
   type StoragePublicSettings,
 } from "@/lib/storage/server";
+import { sweepGhostFiles } from "@/lib/attachments/server";
 
 type Draft = {
   driver: "pg" | "s3";
@@ -39,8 +40,9 @@ function toDraft(settings: StoragePublicSettings): Draft {
 }
 
 function payload(draft: Draft) {
+  const complete = Boolean(draft.endpoint.trim() && draft.bucket.trim() && draft.accessKey.trim());
   return {
-    driver: draft.driver,
+    driver: complete ? ("s3" as const) : ("pg" as const),
     endpoint: draft.endpoint,
     bucket: draft.bucket,
     region: draft.region,
@@ -107,7 +109,7 @@ export function StoragePanel() {
           skip.current = true;
           setSettings(next);
           setDraft({ ...toDraft(next), secretKey: "" });
-          setHint(next.driver === "s3" ? "新上传将写入对象存储" : "新上传将写入数据库");
+          setHint(next.driver === "s3" ? "图片会写成对象存储地址" : "对象存储还没写完，图片暂存站点");
         })
         .catch(() => {
           setHint("还没写完整，暂不保存");
@@ -136,9 +138,31 @@ export function StoragePanel() {
       const next = await migrateStorage({ data: { direction } });
       setSettings(next);
       setDraft((current) => (current ? { ...current, ...toDraft(next), secretKey: current.secretKey } : current));
-      toast.success(direction === "to-s3" ? `已迁出 ${next.moved} 张` : `已收回 ${next.moved} 张`);
+      toast.success(`已迁出 ${next.moved} 张`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "无法迁移");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onSweep() {
+    setBusy("sweep");
+    try {
+      const result = await sweepGhostFiles();
+      const next = await getStorageSettings();
+      setSettings(next);
+      if (result.removed && result.objects) {
+        toast.success(`已清理 ${result.removed} 张未引用，并去掉桶里 ${result.objects} 个幽灵文件`);
+      } else if (result.removed) {
+        toast.success(`已清理 ${result.removed} 张未引用图片`);
+      } else if (result.objects) {
+        toast.success(`已去掉桶里 ${result.objects} 个幽灵文件`);
+      } else {
+        toast.success("没有幽灵图片");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "无法清理");
     } finally {
       setBusy(null);
     }
@@ -151,27 +175,14 @@ export function StoragePanel() {
   return (
     <div className="mt-4 max-w-xl space-y-5">
       <p className="text-sm text-muted-foreground">
-        默认把图片写进数据库，换机器时跟着备份走。图多了可以改成 S3 兼容的对象存储（R2 / MinIO / 阿里云 OSS）。文章里的地址不变。改完自动保存。
+        只接受图片。配好对象存储后，上传会写成公开 URL，和 Obsidian 同步一样。没配好时暂存在站点里。删除附件或保存文章时，会同时删掉对象存储里的文件，不留没引用的幽灵图。
       </p>
       <p className="text-sm text-muted-foreground">
-        {settings.pgCount} 张在数据库
-        {settings.s3Count ? `，${settings.s3Count} 张在对象存储` : ""}
+        {settings.pgCount ? `${settings.pgCount} 张还在站点内` : "站点内没有待迁的图"}
+        {settings.s3Count ? `，${settings.s3Count} 张已是对象存储地址` : ""}
         {settings.source === "env" ? "。当前连接信息来自环境变量。" : ""}
       </p>
-      <div className="space-y-2">
-        <Label>新上传存到</Label>
-        <Select value={draft.driver} onValueChange={(value) => patch({ driver: value as Draft["driver"] })}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="pg">数据库</SelectItem>
-            <SelectItem value="s3">对象存储</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      {draft.driver === "s3" ? (
-        <div className="space-y-4">
+      <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="s3-endpoint">Endpoint</Label>
             <Input
@@ -272,32 +283,21 @@ export function StoragePanel() {
               className="font-mono"
             />
           </div>
-        </div>
-      ) : settings.s3Count > 0 ? (
-        <p className="text-sm text-muted-foreground">
-          还有 {settings.s3Count} 张图在对象存储。删桶之前先收回数据库。
-        </p>
-      ) : null}
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-xs text-muted-foreground">{busy === "save" ? "正在保存…" : hint || "改完会自动保存"}</p>
-        {draft.driver === "s3" ? (
-          <Button variant="outline" disabled={busy !== null} onClick={() => void onTest()}>
-            {busy === "test" ? "测试中…" : "测试"}
-          </Button>
-        ) : null}
+        <Button variant="outline" disabled={busy !== null} onClick={() => void onTest()}>
+          {busy === "test" ? "测试中…" : "测试"}
+        </Button>
+        <Button variant="outline" disabled={busy !== null} onClick={() => void onSweep()}>
+          {busy === "sweep" ? "清理中…" : "清理幽灵图片"}
+        </Button>
       </div>
-      {settings.pgCount > 0 || settings.s3Count > 0 ? (
+      {settings.pgCount > 0 ? (
         <div className="flex flex-wrap gap-2">
-          {settings.pgCount > 0 ? (
-            <Button variant="outline" disabled={busy !== null} onClick={() => void onMigrate("to-s3")}>
-              {busy === "to-s3" ? "迁移中…" : `把 ${settings.pgCount} 张迁到对象存储`}
-            </Button>
-          ) : null}
-          {settings.s3Count > 0 ? (
-            <Button variant="ghost" disabled={busy !== null} onClick={() => void onMigrate("to-pg")}>
-              {busy === "to-pg" ? "迁移中…" : `把 ${settings.s3Count} 张收回数据库`}
-            </Button>
-          ) : null}
+          <Button variant="outline" disabled={busy !== null} onClick={() => void onMigrate("to-s3")}>
+            {busy === "to-s3" ? "迁移中…" : `把 ${settings.pgCount} 张转成对象存储地址`}
+          </Button>
         </div>
       ) : null}
     </div>

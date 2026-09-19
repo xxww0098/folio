@@ -23,22 +23,18 @@ import { Route as MembershipRouteImport } from './routes/membership'
 import { Route as MomentsRouteImport } from './routes/moments'
 import { Route as ObsidianRouteImport } from './routes/obsidian'
 import { Route as PhotosRouteImport } from './routes/photos'
+import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as RssDotxmlRouteImport } from './routes/rss[.]xml'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TagsRouteImport } from './routes/tags'
 import { Route as ThemesRouteImport } from './routes/themes'
 import { Route as WriteRouteImport } from './routes/write'
-import { Route as ApiMcpRouteImport } from './routes/api/mcp'
+import { Route as ApiSplatRouteImport } from './routes/api/$'
 import { Route as PostsSlugRouteImport } from './routes/posts.$slug'
 import { Route as TagsTagRouteImport } from './routes/tags.$tag'
 import { Route as TopicsTopicRouteImport } from './routes/topics.$topic'
 import { Route as WriteIdRouteImport } from './routes/write.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
-import { Route as ApiFilesIdRouteImport } from './routes/api/files.$id'
-import { Route as ApiObsidianImagesRouteImport } from './routes/api/obsidian/images'
-import { Route as ApiObsidianMeRouteImport } from './routes/api/obsidian/me'
-import { Route as ApiObsidianPostsRouteImport } from './routes/api/obsidian/posts'
-import { Route as ApiObsidianPostsSlugRouteImport } from './routes/api/obsidian/posts.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -110,6 +106,11 @@ const PhotosRoute = PhotosRouteImport.update({
   path: '/photos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RobotsDottxtRoute = RobotsDottxtRouteImport.update({
+  id: '/robots.txt',
+  path: '/robots.txt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RssDotxmlRoute = RssDotxmlRouteImport.update({
   id: '/rss.xml',
   path: '/rss.xml',
@@ -135,9 +136,9 @@ const WriteRoute = WriteRouteImport.update({
   path: '/write',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiMcpRoute = ApiMcpRouteImport.update({
-  id: '/api/mcp',
-  path: '/api/mcp',
+const ApiSplatRoute = ApiSplatRouteImport.update({
+  id: '/api/$',
+  path: '/api/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsSlugRoute = PostsSlugRouteImport.update({
@@ -165,31 +166,6 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiFilesIdRoute = ApiFilesIdRouteImport.update({
-  id: '/api/files/$id',
-  path: '/api/files/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiObsidianImagesRoute = ApiObsidianImagesRouteImport.update({
-  id: '/api/obsidian/images',
-  path: '/api/obsidian/images',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiObsidianMeRoute = ApiObsidianMeRouteImport.update({
-  id: '/api/obsidian/me',
-  path: '/api/obsidian/me',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiObsidianPostsRoute = ApiObsidianPostsRouteImport.update({
-  id: '/api/obsidian/posts',
-  path: '/api/obsidian/posts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiObsidianPostsSlugRoute = ApiObsidianPostsSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => ApiObsidianPostsRoute,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -206,22 +182,18 @@ export interface FileRoutesByFullPath {
   '/moments': typeof MomentsRoute
   '/obsidian': typeof ObsidianRoute
   '/photos': typeof PhotosRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tags': typeof TagsRouteWithChildren
   '/themes': typeof ThemesRoute
   '/write': typeof WriteRouteWithChildren
-  '/api/mcp': typeof ApiMcpRoute
+  '/api/$': typeof ApiSplatRoute
   '/posts/$slug': typeof PostsSlugRoute
   '/tags/$tag': typeof TagsTagRoute
   '/topics/$topic': typeof TopicsTopicRoute
   '/write/$id': typeof WriteIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/files/$id': typeof ApiFilesIdRoute
-  '/api/obsidian/images': typeof ApiObsidianImagesRoute
-  '/api/obsidian/me': typeof ApiObsidianMeRoute
-  '/api/obsidian/posts': typeof ApiObsidianPostsRouteWithChildren
-  '/api/obsidian/posts/$slug': typeof ApiObsidianPostsSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -238,22 +210,18 @@ export interface FileRoutesByTo {
   '/moments': typeof MomentsRoute
   '/obsidian': typeof ObsidianRoute
   '/photos': typeof PhotosRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tags': typeof TagsRouteWithChildren
   '/themes': typeof ThemesRoute
   '/write': typeof WriteRouteWithChildren
-  '/api/mcp': typeof ApiMcpRoute
+  '/api/$': typeof ApiSplatRoute
   '/posts/$slug': typeof PostsSlugRoute
   '/tags/$tag': typeof TagsTagRoute
   '/topics/$topic': typeof TopicsTopicRoute
   '/write/$id': typeof WriteIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/files/$id': typeof ApiFilesIdRoute
-  '/api/obsidian/images': typeof ApiObsidianImagesRoute
-  '/api/obsidian/me': typeof ApiObsidianMeRoute
-  '/api/obsidian/posts': typeof ApiObsidianPostsRouteWithChildren
-  '/api/obsidian/posts/$slug': typeof ApiObsidianPostsSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -271,22 +239,18 @@ export interface FileRoutesById {
   '/moments': typeof MomentsRoute
   '/obsidian': typeof ObsidianRoute
   '/photos': typeof PhotosRoute
+  '/robots.txt': typeof RobotsDottxtRoute
   '/rss.xml': typeof RssDotxmlRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/tags': typeof TagsRouteWithChildren
   '/themes': typeof ThemesRoute
   '/write': typeof WriteRouteWithChildren
-  '/api/mcp': typeof ApiMcpRoute
+  '/api/$': typeof ApiSplatRoute
   '/posts/$slug': typeof PostsSlugRoute
   '/tags/$tag': typeof TagsTagRoute
   '/topics/$topic': typeof TopicsTopicRoute
   '/write/$id': typeof WriteIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/api/files/$id': typeof ApiFilesIdRoute
-  '/api/obsidian/images': typeof ApiObsidianImagesRoute
-  '/api/obsidian/me': typeof ApiObsidianMeRoute
-  '/api/obsidian/posts': typeof ApiObsidianPostsRouteWithChildren
-  '/api/obsidian/posts/$slug': typeof ApiObsidianPostsSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -305,22 +269,18 @@ export interface FileRouteTypes {
     | '/moments'
     | '/obsidian'
     | '/photos'
+    | '/robots.txt'
     | '/rss.xml'
     | '/sitemap.xml'
     | '/tags'
     | '/themes'
     | '/write'
-    | '/api/mcp'
+    | '/api/$'
     | '/posts/$slug'
     | '/tags/$tag'
     | '/topics/$topic'
     | '/write/$id'
     | '/api/auth/$'
-    | '/api/files/$id'
-    | '/api/obsidian/images'
-    | '/api/obsidian/me'
-    | '/api/obsidian/posts'
-    | '/api/obsidian/posts/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -337,22 +297,18 @@ export interface FileRouteTypes {
     | '/moments'
     | '/obsidian'
     | '/photos'
+    | '/robots.txt'
     | '/rss.xml'
     | '/sitemap.xml'
     | '/tags'
     | '/themes'
     | '/write'
-    | '/api/mcp'
+    | '/api/$'
     | '/posts/$slug'
     | '/tags/$tag'
     | '/topics/$topic'
     | '/write/$id'
     | '/api/auth/$'
-    | '/api/files/$id'
-    | '/api/obsidian/images'
-    | '/api/obsidian/me'
-    | '/api/obsidian/posts'
-    | '/api/obsidian/posts/$slug'
   id:
     | '__root__'
     | '/'
@@ -369,22 +325,18 @@ export interface FileRouteTypes {
     | '/moments'
     | '/obsidian'
     | '/photos'
+    | '/robots.txt'
     | '/rss.xml'
     | '/sitemap.xml'
     | '/tags'
     | '/themes'
     | '/write'
-    | '/api/mcp'
+    | '/api/$'
     | '/posts/$slug'
     | '/tags/$tag'
     | '/topics/$topic'
     | '/write/$id'
     | '/api/auth/$'
-    | '/api/files/$id'
-    | '/api/obsidian/images'
-    | '/api/obsidian/me'
-    | '/api/obsidian/posts'
-    | '/api/obsidian/posts/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -402,19 +354,16 @@ export interface RootRouteChildren {
   MomentsRoute: typeof MomentsRoute
   ObsidianRoute: typeof ObsidianRoute
   PhotosRoute: typeof PhotosRoute
+  RobotsDottxtRoute: typeof RobotsDottxtRoute
   RssDotxmlRoute: typeof RssDotxmlRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TagsRoute: typeof TagsRouteWithChildren
   ThemesRoute: typeof ThemesRoute
   WriteRoute: typeof WriteRouteWithChildren
-  ApiMcpRoute: typeof ApiMcpRoute
+  ApiSplatRoute: typeof ApiSplatRoute
   PostsSlugRoute: typeof PostsSlugRoute
   TopicsTopicRoute: typeof TopicsTopicRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  ApiFilesIdRoute: typeof ApiFilesIdRoute
-  ApiObsidianImagesRoute: typeof ApiObsidianImagesRoute
-  ApiObsidianMeRoute: typeof ApiObsidianMeRoute
-  ApiObsidianPostsRoute: typeof ApiObsidianPostsRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -517,6 +466,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PhotosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/robots.txt': {
+      id: '/robots.txt'
+      path: '/robots.txt'
+      fullPath: '/robots.txt'
+      preLoaderRoute: typeof RobotsDottxtRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rss.xml': {
       id: '/rss.xml'
       path: '/rss.xml'
@@ -552,11 +508,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WriteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/mcp': {
-      id: '/api/mcp'
-      path: '/api/mcp'
-      fullPath: '/api/mcp'
-      preLoaderRoute: typeof ApiMcpRouteImport
+    '/api/$': {
+      id: '/api/$'
+      path: '/api/$'
+      fullPath: '/api/$'
+      preLoaderRoute: typeof ApiSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts/$slug': {
@@ -594,41 +550,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/files/$id': {
-      id: '/api/files/$id'
-      path: '/api/files/$id'
-      fullPath: '/api/files/$id'
-      preLoaderRoute: typeof ApiFilesIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/obsidian/images': {
-      id: '/api/obsidian/images'
-      path: '/api/obsidian/images'
-      fullPath: '/api/obsidian/images'
-      preLoaderRoute: typeof ApiObsidianImagesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/obsidian/me': {
-      id: '/api/obsidian/me'
-      path: '/api/obsidian/me'
-      fullPath: '/api/obsidian/me'
-      preLoaderRoute: typeof ApiObsidianMeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/obsidian/posts': {
-      id: '/api/obsidian/posts'
-      path: '/api/obsidian/posts'
-      fullPath: '/api/obsidian/posts'
-      preLoaderRoute: typeof ApiObsidianPostsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/obsidian/posts/$slug': {
-      id: '/api/obsidian/posts/$slug'
-      path: '/$slug'
-      fullPath: '/api/obsidian/posts/$slug'
-      preLoaderRoute: typeof ApiObsidianPostsSlugRouteImport
-      parentRoute: typeof ApiObsidianPostsRoute
-    }
   }
 }
 
@@ -652,17 +573,6 @@ const WriteRouteChildren: WriteRouteChildren = {
 
 const WriteRouteWithChildren = WriteRoute._addFileChildren(WriteRouteChildren)
 
-interface ApiObsidianPostsRouteChildren {
-  ApiObsidianPostsSlugRoute: typeof ApiObsidianPostsSlugRoute
-}
-
-const ApiObsidianPostsRouteChildren: ApiObsidianPostsRouteChildren = {
-  ApiObsidianPostsSlugRoute: ApiObsidianPostsSlugRoute,
-}
-
-const ApiObsidianPostsRouteWithChildren =
-  ApiObsidianPostsRoute._addFileChildren(ApiObsidianPostsRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EntryRoute: EntryRoute,
@@ -678,19 +588,16 @@ const rootRouteChildren: RootRouteChildren = {
   MomentsRoute: MomentsRoute,
   ObsidianRoute: ObsidianRoute,
   PhotosRoute: PhotosRoute,
+  RobotsDottxtRoute: RobotsDottxtRoute,
   RssDotxmlRoute: RssDotxmlRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TagsRoute: TagsRouteWithChildren,
   ThemesRoute: ThemesRoute,
   WriteRoute: WriteRouteWithChildren,
-  ApiMcpRoute: ApiMcpRoute,
+  ApiSplatRoute: ApiSplatRoute,
   PostsSlugRoute: PostsSlugRoute,
   TopicsTopicRoute: TopicsTopicRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
-  ApiFilesIdRoute: ApiFilesIdRoute,
-  ApiObsidianImagesRoute: ApiObsidianImagesRoute,
-  ApiObsidianMeRoute: ApiObsidianMeRoute,
-  ApiObsidianPostsRoute: ApiObsidianPostsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

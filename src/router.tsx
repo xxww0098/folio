@@ -7,7 +7,7 @@ export function getRouter() {
   return createRouter({
     routeTree,
     defaultErrorComponent: AppErrorComponent,
-    defaultNotFoundComponent: MissingPage,
+    defaultNotFoundComponent: () => <MissingPage />,
     defaultPreload: "intent",
     defaultStaleTime: 30_000,
     scrollRestoration: true,
