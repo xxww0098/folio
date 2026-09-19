@@ -65,6 +65,18 @@ export async function callTool(
   args: Record<string, unknown>,
   ctx: { userId: string; origin: string },
 ): Promise<CallToolResult> {
+  const writeTools = new Set([
+    "publish_post",
+    "update_post",
+    "set_post_status",
+    "delete_post",
+    "restore_post",
+    "upload_image",
+  ]);
+  if (writeTools.has(name)) {
+    const actor = await getActor(ctx.userId);
+    if (!actor.canWrite) return jsonResult({ error: "没有投稿权限" }, true);
+  }
   switch (name) {
     case "whoami":
       return whoami(ctx.userId);
@@ -103,6 +115,7 @@ async function whoami(userId: string) {
     userId,
     name,
     role: actor.role,
+    canWrite: actor.canWrite,
     canEditAll: actor.canEditAll,
     topics: [...TOPICS],
   });

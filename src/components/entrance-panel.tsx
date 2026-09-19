@@ -87,7 +87,7 @@ export function EntrancePanel() {
   return (
     <div className="mt-4 max-w-xl space-y-5">
       <p className="text-sm text-muted-foreground">
-        开启后，直接打开 /console 会显示成普通 404。用下面这段路径才能进后台。Obsidian 与 Agent 令牌不受影响。
+        开启后，直接打开 /console 会显示成普通 404。用下面这段路径才能进后台。个人中心 /me 与写文章不受影响。Obsidian 与 Agent 令牌也不拦。
       </p>
       {settings.enabled && href ? (
         <div className="rounded-xl bg-card px-5 py-4 shadow-md">

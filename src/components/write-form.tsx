@@ -99,7 +99,10 @@ export function WriteForm({ post }: { post?: PostDetail }) {
     try {
       await deletePost({ data: post.id });
       toast.success("已移入回收站");
-      await navigate({ to: "/console" });
+      const { getWorkspaceAccess } = await import("@/lib/entrance/server");
+      const { homeForRole } = await import("@/lib/workspace");
+      const access = await getWorkspaceAccess().catch(() => null);
+      await navigate({ to: homeForRole(access?.role), search: { section: "posts" } });
     } catch {
       toast.error("无法删除");
     } finally {

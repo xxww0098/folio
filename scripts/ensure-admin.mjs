@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * First-boot owner account. Personal blog: one credential user, no public signup.
+ * First-boot owner account. Creates one credential admin when the user table
+ * is empty. Later visitors can register as readers from the login page.
  *
  * No row in "user" → insert Better Auth user + credential account + admin role.
  * A user already there → leave them (never overwrite the password).

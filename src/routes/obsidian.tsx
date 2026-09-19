@@ -42,7 +42,9 @@ function ObsidianGuidePage() {
             {busy ? "打包中…" : "下载插件包"}
           </Button>
           <Button asChild variant="outline">
-            <Link to="/console">去控制台签发令牌</Link>
+            <Link to="/console" search={{ section: "obsidian" }}>
+              去控制台签发令牌
+            </Link>
           </Button>
           <Button asChild variant="outline">
             <Link to="/mcp">Agent 远程接入</Link>

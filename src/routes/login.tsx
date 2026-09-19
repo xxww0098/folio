@@ -7,11 +7,23 @@ import { SignInGate } from "@/lib/auth/gates";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SiteShell } from "@/components/site-shell";
+import { FolioMark } from "@/components/folio-mark";
 import { listPublishedPosts } from "@/lib/blog/server";
+import { getWorkspaceAccess } from "@/lib/entrance/server";
+import { claimAccount, type Role } from "@/lib/roles";
+import { homeForRole, isStaffRole } from "@/lib/workspace";
 
 function safeNext(value: unknown) {
   return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") ? value : undefined;
+}
+
+function continuePath(next: string, role: Role | null | undefined, registering: boolean) {
+  if (next === "/console" && !isStaffRole(role)) return "/me";
+  if (next && next !== "/") return next;
+  if (registering) return "/me";
+  return homeForRole(role);
 }
 
 function onGrokHost() {
@@ -21,36 +33,62 @@ function onGrokHost() {
 }
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (search: Record<string, unknown>): { next?: string } => {
+  validateSearch: (search: Record<string, unknown>): { next?: string; mode?: "register" } => {
     const next = safeNext(search.next);
-    return next ? { next } : {};
+    const mode = search.mode === "register" ? "register" : undefined;
+    return { ...(next ? { next } : {}), ...(mode ? { mode } : {}) };
   },
-  loader: () => listPublishedPosts(),
+  loader: async () => {
+    const [posts, access] = await Promise.all([listPublishedPosts(), getWorkspaceAccess()]);
+    return { posts, access };
+  },
+  head: () => ({ meta: [{ title: "登录 - 折页" }] }),
   component: Login,
 });
 
 function Login() {
-  const posts = Route.useLoaderData();
-  const next = Route.useSearch().next ?? "/";
+  const { posts, access } = Route.useLoaderData();
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const next = search.next ?? "/";
+  const mode = search.mode === "register" ? "register" : "login";
+  const registering = mode === "register";
+  const signedInHome = continuePath(next, access.role, registering);
+
   return (
     <SiteShell posts={posts}>
       <div className="mx-auto grid min-h-[70vh] max-w-md place-items-center px-4 py-16">
         <div className="w-full rounded-xl bg-card p-8 shadow-md">
-          <div className="mb-6 flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-              折
+          <div className="mb-5 flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-lg bg-primary text-primary-foreground">
+              <FolioMark className="size-5" />
             </span>
             <span className="font-semibold">折页</span>
           </div>
-          <h1 className="text-2xl font-semibold">登录</h1>
+          <h1 className="text-2xl font-semibold">{registering ? "注册" : "登录"}</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            个人站点，仅站长可登录。
+            {registering ? "注册后可评论、开会员。新账号是普通用户，投稿需管理员开通作者。" : "欢迎回来。没有账号就先注册。"}
           </p>
-          <div className="mt-8">
-            <SignInGate fallback={<SignInOptions callbackURL={next} />}>
+          <div className="mt-6">
+            <SignInGate
+              fallback={
+                <SignInOptions
+                  callbackURL={next}
+                  mode={mode}
+                  onMode={(nextMode) =>
+                    void navigate({
+                      search: {
+                        ...(search.next ? { next: search.next } : {}),
+                        ...(nextMode === "register" ? { mode: "register" as const } : {}),
+                      },
+                    })
+                  }
+                />
+              }
+            >
               <p className="text-sm text-muted-foreground">你已经登录。</p>
               <Button asChild className="mt-4 w-full">
-                <a href={next === "/" ? "/membership" : next}>继续</a>
+                <a href={signedInHome}>继续</a>
               </Button>
             </SignInGate>
           </div>
@@ -60,14 +98,36 @@ function Login() {
   );
 }
 
-function SignInOptions({ callbackURL }: { callbackURL: string }) {
+function SignInOptions({
+  callbackURL,
+  mode,
+  onMode,
+}: {
+  callbackURL: string;
+  mode: "login" | "register";
+  onMode: (mode: "login" | "register") => void;
+}) {
   if (!authEnabled) {
     return <p className="text-sm text-muted-foreground">登录暂未开放。</p>;
   }
   const showOAuth = onGrokHost() || !emailAndPasswordEnabled;
   return (
     <div className="flex flex-col gap-6">
-      {emailAndPasswordEnabled ? <EmailPasswordForm callbackURL={callbackURL} /> : null}
+      {emailAndPasswordEnabled ? (
+        <div className="space-y-4">
+          <Tabs value={mode} onValueChange={(value) => onMode(value === "register" ? "register" : "login")}>
+            <TabsList className="flex w-full">
+              <TabsTrigger className="flex-1" value="login">
+                登录
+              </TabsTrigger>
+              <TabsTrigger className="flex-1" value="register">
+                注册
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <EmailPasswordForm callbackURL={callbackURL} mode={mode} />
+        </div>
+      ) : null}
       {showOAuth ? (
         <div className="flex flex-col gap-2">
           {emailAndPasswordEnabled ? (
@@ -90,23 +150,63 @@ function SignInOptions({ callbackURL }: { callbackURL: string }) {
   );
 }
 
-function EmailPasswordForm({ callbackURL }: { callbackURL: string }) {
+function friendlyAuthError(message: string | undefined, mode: "login" | "register") {
+  const text = (message ?? "").toLowerCase();
+  if (text.includes("already") || text.includes("exists") || text.includes("unique")) {
+    return "这个邮箱已经注册过";
+  }
+  if (text.includes("password") && (text.includes("short") || text.includes("least") || text.includes("length"))) {
+    return "密码至少 8 位";
+  }
+  if (text.includes("invalid") || text.includes("credential") || text.includes("incorrect") || text.includes("wrong")) {
+    return mode === "register" ? "无法注册，请检查邮箱和密码" : "邮箱或密码不对";
+  }
+  if (message) return message;
+  return mode === "register" ? "无法注册" : "邮箱或密码不对";
+}
+
+function EmailPasswordForm({ callbackURL, mode }: { callbackURL: string; mode: "login" | "register" }) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
+  const registering = mode === "register";
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    const trimmedEmail = email.trim();
+    const trimmedName = name.trim();
+    if (registering) {
+      if (!trimmedName) {
+        toast.error("请填写显示名");
+        return;
+      }
+      if (password !== confirm) {
+        toast.error("两次输入的密码不一致");
+        return;
+      }
+    }
     setBusy(true);
     try {
-      const { error } = await authClient.signIn.email({
-        email: email.trim(),
-        password,
-      });
-      if (error) throw new Error(error.message || "邮箱或密码不对");
-      window.location.href = callbackURL;
+      if (registering) {
+        const { error } = await authClient.signUp.email({
+          email: trimmedEmail,
+          password,
+          name: trimmedName,
+        });
+        if (error) throw new Error(friendlyAuthError(error.message, "register"));
+      } else {
+        const { error } = await authClient.signIn.email({
+          email: trimmedEmail,
+          password,
+        });
+        if (error) throw new Error(friendlyAuthError(error.message, "login"));
+      }
+      const claimed = await claimAccount().catch(() => undefined);
+      window.location.href = continuePath(callbackURL, claimed?.role ?? null, registering);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "无法登录");
+      toast.error(error instanceof Error ? error.message : registering ? "无法注册" : "无法登录");
     } finally {
       setBusy(false);
     }
@@ -114,6 +214,22 @@ function EmailPasswordForm({ callbackURL }: { callbackURL: string }) {
 
   return (
     <form className="space-y-4" onSubmit={(event) => void onSubmit(event)}>
+      {registering ? (
+        <div>
+          <Label htmlFor="folio-name">显示名</Label>
+          <Input
+            id="folio-name"
+            className="mt-2"
+            type="text"
+            required
+            minLength={1}
+            maxLength={32}
+            value={name}
+            autoComplete="nickname"
+            onChange={(event) => setName(event.target.value)}
+          />
+        </div>
+      ) : null}
       <div>
         <Label htmlFor="folio-email">邮箱</Label>
         <Input
@@ -135,12 +251,27 @@ function EmailPasswordForm({ callbackURL }: { callbackURL: string }) {
           required
           minLength={8}
           value={password}
-          autoComplete="current-password"
+          autoComplete={registering ? "new-password" : "current-password"}
           onChange={(event) => setPassword(event.target.value)}
         />
       </div>
+      {registering ? (
+        <div>
+          <Label htmlFor="folio-confirm">确认密码</Label>
+          <Input
+            id="folio-confirm"
+            className="mt-2"
+            type="password"
+            required
+            minLength={8}
+            value={confirm}
+            autoComplete="new-password"
+            onChange={(event) => setConfirm(event.target.value)}
+          />
+        </div>
+      ) : null}
       <Button type="submit" className="w-full" disabled={busy}>
-        {busy ? "请稍候…" : "登录"}
+        {busy ? "请稍候…" : registering ? "注册" : "登录"}
       </Button>
     </form>
   );

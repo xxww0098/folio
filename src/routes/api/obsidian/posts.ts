@@ -27,6 +27,8 @@ export const Route = createFileRoute("/api/obsidian/posts")({
         if (markdown.trim().length < 8) return jsonError("正文太短", 400);
         if (markdown.length > 80000) return jsonError("正文过长", 400);
         try {
+          const actor = await getActor(userId);
+          if (!actor.canWrite) return jsonError("没有投稿权限", 403);
           const result = await publishMarkdown(userId, markdown, requestOrigin(request));
           return jsonOk(result);
         } catch (error) {

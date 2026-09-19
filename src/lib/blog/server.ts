@@ -5,7 +5,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { displayNameFor } from "@/lib/profile";
 import { ensureAttachmentsSeeded } from "@/lib/attachments/server";
 import { ensureLinksSeeded } from "@/lib/links/server";
-import { getActor } from "@/lib/roles";
+import { getActor, parseRole, ROLES } from "@/lib/roles";
 import { ensureMomentsSeeded } from "@/lib/moments/server";
 import { EDITORIAL_NAME, EDITORIAL_USER_ID, SEED_POSTS, SEED_SLUG_MIGRATIONS } from "./seed";
 import {
@@ -382,6 +382,8 @@ export const createPost = createServerFn({ method: "POST" })
   .validator(postInputSchema)
   .handler(async ({ context, data }): Promise<{ slug: string }> => {
     if (!isTopic(data.topic)) throw new Error("未知栏目");
+    const actor = await getActor(context.userId);
+    if (!actor.canWrite) throw new Error("没有投稿权限");
     const sql = await getSql();
     const authorName = await displayNameFor(sql, context.userId, "作者");
     const slug = makeSlug(data.title);
@@ -636,6 +638,7 @@ export async function upsertPostBySlug(input: UpsertPostInput): Promise<{ id: nu
   if (body.length < 8) throw new Error("正文太短");
   const sql = await getSql();
   const actor = await getActor(input.userId);
+  if (!actor.canWrite) throw new Error("没有投稿权限");
   const authorName = await displayNameFor(sql, input.userId, "作者");
   let slug = makeStableSlug(title, input.slug);
   const found = await sql.query<{ id: number; user_id: string; deleted_at: string | null; published_at: string | null }>(
@@ -710,7 +713,7 @@ export async function upsertPostBySlug(input: UpsertPostInput): Promise<{ id: nu
 
 export const setMemberRole = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(z.object({ userId: z.string().min(1), role: z.enum(["author", "editor", "admin"]) }))
+  .validator(z.object({ userId: z.string().min(1), role: z.enum(ROLES) }))
   .handler(async ({ context, data }): Promise<{ ok: true }> => {
     const actor = await getActor(context.userId);
     if (!actor.isAdmin) throw new Error("没有权限");
@@ -733,25 +736,32 @@ export const setMemberRole = createServerFn({ method: "POST" })
 
 export const getAuthorDashboard = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(async ({ context }): Promise<AuthorDashboard> => {
+  .validator(z.object({ scope: z.enum(["self", "all"]).optional() }).optional())
+  .handler(async ({ context, data }): Promise<AuthorDashboard> => {
     const sql = await getSql();
     const actor = await getActor(context.userId);
-    const liveClause = actor.canEditAll
-      ? `where p.deleted_at is null order by p.updated_at desc`
-      : `where p.user_id = $1 and p.deleted_at is null order by p.updated_at desc`;
-    const trashClause = actor.canEditAll
-      ? `where p.deleted_at is not null order by p.deleted_at desc`
-      : `where p.user_id = $1 and p.deleted_at is not null order by p.deleted_at desc`;
-    const params = actor.canEditAll ? [] : [context.userId];
+    const authored = data?.scope === "self";
+    const self = authored || !actor.canEditAll;
+    const liveClause = self
+      ? `where p.user_id = $1 and p.deleted_at is null order by p.updated_at desc`
+      : `where p.deleted_at is null order by p.updated_at desc`;
+    const trashClause = self
+      ? `where p.user_id = $1 and p.deleted_at is not null order by p.deleted_at desc`
+      : `where p.deleted_at is not null order by p.deleted_at desc`;
+    const params = self ? [context.userId] : [];
     const posts = await queryPosts(sql, liveClause, params);
     const trash = await queryPosts(sql, trashClause, params);
-    const commentSql = actor.canEditAll
+    const commentSql = authored
       ? `select c.id, c.post_id, c.user_id, c.author_name, c.body, c.parent_id, c.created_at, p.title, p.slug
          from comments c join posts p on p.id = c.post_id
-         where p.deleted_at is null order by c.created_at desc limit 30`
-      : `select c.id, c.post_id, c.user_id, c.author_name, c.body, c.parent_id, c.created_at, p.title, p.slug
+         where c.user_id = $1 and p.deleted_at is null order by c.created_at desc limit 30`
+      : self
+        ? `select c.id, c.post_id, c.user_id, c.author_name, c.body, c.parent_id, c.created_at, p.title, p.slug
          from comments c join posts p on p.id = c.post_id
-         where p.user_id = $1 and p.deleted_at is null order by c.created_at desc limit 30`;
+         where p.user_id = $1 and p.deleted_at is null order by c.created_at desc limit 30`
+        : `select c.id, c.post_id, c.user_id, c.author_name, c.body, c.parent_id, c.created_at, p.title, p.slug
+         from comments c join posts p on p.id = c.post_id
+         where p.deleted_at is null order by c.created_at desc limit 30`;
     const commentRows = await sql.query<{
       id: number;
       post_id: number;
@@ -762,7 +772,7 @@ export const getAuthorDashboard = createServerFn({ method: "GET" })
       created_at: string;
       title: string;
       slug: string;
-    }>(commentSql, actor.canEditAll ? [] : [context.userId]);
+    }>(commentSql, params);
     const comments: InboxComment[] = commentRows.map((row) => ({
       id: row.id,
       postId: row.post_id,
@@ -774,30 +784,31 @@ export const getAuthorDashboard = createServerFn({ method: "GET" })
       postTitle: row.title,
       postSlug: row.slug,
     }));
-    const likeSql = actor.canEditAll
-      ? `select count(*)::int as n from post_likes l join posts p on p.id = l.post_id where p.deleted_at is null`
-      : `select count(*)::int as n from post_likes l join posts p on p.id = l.post_id where p.user_id = $1`;
-    const commentCountSql = actor.canEditAll
-      ? `select count(*)::int as n from comments c join posts p on p.id = c.post_id where p.deleted_at is null`
-      : `select count(*)::int as n from comments c join posts p on p.id = c.post_id where p.user_id = $1`;
-    const likeRows = await sql.query<{ n: number }>(likeSql, actor.canEditAll ? [] : [context.userId]);
-    const commentCountRows = await sql.query<{ n: number }>(
-      commentCountSql,
-      actor.canEditAll ? [] : [context.userId],
-    );
+    const likeSql = authored
+      ? `select count(*)::int as n from post_likes where user_id = $1`
+      : self
+        ? `select count(*)::int as n from post_likes l join posts p on p.id = l.post_id where p.user_id = $1`
+        : `select count(*)::int as n from post_likes l join posts p on p.id = l.post_id where p.deleted_at is null`;
+    const commentCountSql = authored
+      ? `select count(*)::int as n from comments where user_id = $1`
+      : self
+        ? `select count(*)::int as n from comments c join posts p on p.id = c.post_id where p.user_id = $1`
+        : `select count(*)::int as n from comments c join posts p on p.id = c.post_id where p.deleted_at is null`;
+    const likeRows = await sql.query<{ n: number }>(likeSql, params);
+    const commentCountRows = await sql.query<{ n: number }>(commentCountSql, params);
     let members: AuthorDashboard["members"] = [];
-    if (actor.isAdmin) {
+    if (actor.isAdmin && !self) {
       const userRows = await sql.query<{ id: string; name: string | null; email: string | null; role: string | null }>(
         `select u.id, u.name, u.email, r.role
          from "user" u
          left join user_roles r on r.user_id = u.id
-         order by u.created_at desc`,
+         order by u."createdAt" desc`,
       );
       members = userRows.map((row) => ({
         id: row.id,
         name: row.name?.trim() || row.email?.split("@")[0] || "用户",
         email: row.email,
-        role: row.role === "admin" || row.role === "editor" || row.role === "author" ? row.role : "author",
+        role: parseRole(row.role),
       }));
     }
     return {

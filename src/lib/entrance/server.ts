@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getSql } from "@/lib/db";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { optionalAuthMiddleware } from "@/lib/membership/session";
-import { getActor } from "@/lib/roles";
+import { getActor, type Role } from "@/lib/roles";
 import {
   cookieMatchesEntrance,
   encodeEntrance,
@@ -74,6 +74,30 @@ export const getBackendAccess = createServerFn({ method: "GET" })
   .middleware([optionalAuthMiddleware])
   .handler(async ({ context }): Promise<{ unlocked: boolean }> => {
     return { unlocked: await isBackendUnlocked(context.userId) };
+  });
+
+export const getWorkspaceAccess = createServerFn({ method: "GET" })
+  .middleware([optionalAuthMiddleware])
+  .handler(async ({ context }) => {
+    let role: Role | null = null;
+    let isStaff = false;
+    let isAdmin = false;
+    let canWrite = false;
+    if (context.userId) {
+      const actor = await getActor(context.userId);
+      role = actor.role;
+      isStaff = actor.canEditAll;
+      isAdmin = actor.isAdmin;
+      canWrite = actor.canWrite;
+    }
+    return {
+      unlocked: await isBackendUnlocked(context.userId),
+      signedIn: Boolean(context.userId),
+      role,
+      isStaff,
+      isAdmin,
+      canWrite,
+    };
   });
 
 export const claimEntrance = createServerFn({ method: "GET" })
