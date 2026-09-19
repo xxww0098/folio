@@ -5,6 +5,7 @@ import type { PostListItem } from "@/lib/blog/types";
 import type { Role } from "@/lib/roles";
 import type { WorkspaceArea } from "@/lib/workspace";
 import { workspacePath } from "@/lib/workspace";
+import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ConsoleCommand } from "./command";
 import { SECTION_META, type ConsoleSection } from "./nav";
@@ -47,8 +48,10 @@ export function ConsoleShell({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const writing = section === "write";
+
   return (
-    <div className="console-app flex min-h-dvh" data-console="">
+    <div className="console-app flex h-dvh overflow-hidden" data-console="">
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 border-r border-console-line lg:block">
         <ConsoleSidebar
           area={area}
@@ -111,13 +114,15 @@ export function ConsoleShell({
           </div>
         </header>
 
-        <main className="flex min-h-0 flex-1 flex-col px-4 pb-10 sm:px-6">
-          <h1 className="mb-4 flex items-center gap-2 text-sm font-medium text-console-ink lg:hidden">
-            <TitleIcon className="size-4 text-console-nav" />
-            {meta.label}
-          </h1>
-          <div className="flex-1">{children}</div>
-          <p className="mt-10 text-center text-xs text-console-muted">Powered by 折页 Folio</p>
+        <main className={cn("flex min-h-0 flex-1 flex-col", writing ? "overflow-hidden p-0" : "px-4 pb-10 sm:px-6")}>
+          {writing ? null : (
+            <h1 className="mb-4 flex items-center gap-2 text-sm font-medium text-console-ink lg:hidden">
+              <TitleIcon className="size-4 text-console-nav" />
+              {meta.label}
+            </h1>
+          )}
+          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          {writing ? null : <p className="mt-10 text-center text-xs text-console-muted">Powered by 折页 Folio</p>}
         </main>
       </div>
 

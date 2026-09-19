@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { SiteShell } from "@/components/site-shell";
+import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { getSiteChrome } from "@/lib/blog/server";
 
 export const Route = createFileRoute("/tags")({
@@ -11,7 +11,7 @@ export const Route = createFileRoute("/tags")({
 function TagsPage() {
   const chrome = Route.useLoaderData();
   return (
-    <SiteShell posts={chrome.posts} tags={chrome.tags} recentComments={chrome.recentComments} sidebar>
+    <SiteShell {...siteChromeProps(chrome)} sidebar>
       <h1 className="text-2xl font-semibold tracking-tight">标签</h1>
       <p className="mt-2 text-sm text-muted-foreground">从更细的线索进入文章。</p>
       <div className="mt-6 flex flex-wrap gap-3">

@@ -1,5 +1,4 @@
 import { Check, Monitor, Moon, Palette, Sun } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 import { THEMES, THEME_MODES, MODE_LABEL, type ThemeMode } from "@/lib/theme/catalog";
 import { useTheme } from "@/lib/theme/provider";
 import {
@@ -81,12 +80,6 @@ export function ThemeToggle() {
             </DropdownMenuItem>
           );
         })}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link to="/themes" className="text-muted-foreground">
-            全部主题
-          </Link>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

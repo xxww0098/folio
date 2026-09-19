@@ -54,7 +54,7 @@ export function SearchDialog({ posts }: { posts: PostListItem[] }) {
           autoFocus
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="搜索标题、导语或分类"
+          placeholder="搜索文章"
           className="mt-3"
         />
         <ul className="mt-3 max-h-80 overflow-y-auto">

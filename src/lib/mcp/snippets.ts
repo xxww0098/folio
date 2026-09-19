@@ -63,7 +63,7 @@ topic: TypeScript
 tags:
   - TypeScript
   - 类型系统
-status: published
+status: draft
 access: public
 ---
 

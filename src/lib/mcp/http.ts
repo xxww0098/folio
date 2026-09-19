@@ -1,5 +1,6 @@
 import { resolveApiUserId } from "@/lib/obsidian/auth";
 import { requestOrigin } from "@/lib/obsidian/http";
+import { authFailDelay, authLock, clientAuthKey, noteAuthFailure, noteAuthSuccess } from "@/lib/obsidian/token-guard";
 import { unauthorizedResponse } from "./handler";
 import { MCP_PROTOCOL_VERSION, type JsonRpcResponse } from "./protocol";
 
@@ -44,9 +45,30 @@ export function mcpUnauthorized(body?: JsonRpcResponse) {
   return new Response(JSON.stringify(body ?? unauthorizedResponse(null)), { status: 401, headers });
 }
 
+export function mcpTooMany(retryAfterSec: number) {
+  const headers = new Headers({
+    ...MCP_CORS,
+    "Content-Type": "application/json; charset=utf-8",
+    "Retry-After": String(retryAfterSec),
+    "MCP-Protocol-Version": MCP_PROTOCOL_VERSION,
+  });
+  return new Response(
+    JSON.stringify({ jsonrpc: "2.0", id: null, error: { code: -32000, message: "尝试过多，请稍后再试" } }),
+    { status: 429, headers },
+  );
+}
+
 export async function requireMcpUserId(request: Request): Promise<string | Response> {
+  const key = clientAuthKey(request, request.headers.get("authorization") ?? "");
+  const lock = authLock(key);
+  if (lock.locked) return mcpTooMany(lock.retryAfterSec);
   const userId = await resolveApiUserId(request);
-  if (!userId) return mcpUnauthorized();
+  if (!userId) {
+    noteAuthFailure(key);
+    await authFailDelay();
+    return mcpUnauthorized();
+  }
+  noteAuthSuccess(key);
   return userId;
 }
 

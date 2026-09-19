@@ -573,9 +573,17 @@
 .tiptap {
   min-height: 20rem;
 }
+.console-app .tiptap {
+  min-height: calc(100dvh - 10rem);
+}
 .tiptap p {
   margin: 0.7rem 0;
   line-height: 1.85;
+}
+.tiptap h1 {
+  margin: 1.8rem 0 0.7rem;
+  font-size: 1.75rem;
+  font-weight: 650;
 }
 .tiptap h2 {
   margin: 1.6rem 0 0.6rem;

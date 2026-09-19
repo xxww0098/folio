@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SiteShell } from "@/components/site-shell";
+import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { getSiteChrome } from "@/lib/blog/server";
 import { listFriendLinks } from "@/lib/links/server";
+import { requirePublicPage } from "@/lib/pages/server";
 
 export const Route = createFileRoute("/links")({
+  beforeLoad: () => requirePublicPage("links"),
   loader: async () => {
     const [chrome, links] = await Promise.all([getSiteChrome(), listFriendLinks()]);
     return { chrome, links };
@@ -17,7 +19,7 @@ function LinksPage() {
   const groups = [...new Set(links.map((link) => link.groupName))];
 
   return (
-    <SiteShell posts={chrome.posts} tags={chrome.tags} recentComments={chrome.recentComments} sidebar>
+    <SiteShell {...siteChromeProps(chrome)} sidebar>
       <h1 className="text-2xl font-semibold tracking-tight">友情链接</h1>
       <p className="mt-2 text-sm text-muted-foreground">一些值得停下来看看的站点。</p>
       {groups.map((group) => (

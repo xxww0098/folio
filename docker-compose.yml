@@ -8,7 +8,7 @@
 #   ./scripts/update-from-release.sh
 #
 # 指定版本：
-#   FOLIO_VERSION=v0.1.5 docker compose pull folio && docker compose up -d
+#   FOLIO_VERSION=v0.1.6 docker compose pull folio && docker compose up -d
 #
 # 镜像：ghcr.io/xxww0098/folio:<tag>
 # 前端入口默认 8011（容器内仍监听 8080）。
@@ -54,7 +54,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_FOLIO_VERSION: ${FOLIO_VERSION:-0.1.5}
+        VITE_FOLIO_VERSION: ${FOLIO_VERSION:-0.1.6}
         VITE_AUTH_ENABLED: "true"
         VITE_FOLIO_EMAIL_PASSWORD: "true"
     restart: unless-stopped
@@ -78,7 +78,7 @@ services:
       FOLIO_S3_PUBLIC_URL: ${FOLIO_S3_PUBLIC_URL:-}
       FOLIO_S3_PREFIX: ${FOLIO_S3_PREFIX:-}
       VITE_AUTH_ENABLED: "true"
-      VITE_FOLIO_VERSION: ${FOLIO_VERSION:-0.1.5}
+      VITE_FOLIO_VERSION: ${FOLIO_VERSION:-0.1.6}
       NODE_ENV: production
       HOST: "0.0.0.0"
       PORT: "8080"

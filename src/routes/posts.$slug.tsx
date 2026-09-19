@@ -9,7 +9,7 @@ import { LikeButton } from "@/components/like-button";
 import { Paywall } from "@/components/paywall";
 import { ShareBar } from "@/components/share-bar";
 import { ReadingProgress } from "@/components/reading-progress";
-import { SiteShell } from "@/components/site-shell";
+import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { ArticleBody, extractToc } from "@/lib/blog/markdown";
 import { getPostBySlug, getSiteChrome } from "@/lib/blog/server";
 import { listComments } from "@/lib/comments/server";
@@ -77,9 +77,7 @@ function ArticlePage() {
 
   return (
     <SiteShell
-      posts={chrome.posts}
-      tags={chrome.tags}
-      recentComments={chrome.recentComments}
+      {...siteChromeProps(chrome)}
       sidebar
       sidebarExtra={
         <>

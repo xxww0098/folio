@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArticleCard } from "@/components/article-card";
-import { SiteShell } from "@/components/site-shell";
+import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { getSiteChrome, listPostsByTopic } from "@/lib/blog/server";
 import { TOPICS } from "@/lib/blog/types";
 
@@ -22,7 +22,7 @@ function TopicPage() {
   const known = (TOPICS as readonly string[]).includes(topic);
 
   return (
-    <SiteShell posts={chrome.posts} tags={chrome.tags} recentComments={chrome.recentComments} sidebar>
+    <SiteShell {...siteChromeProps(chrome)} sidebar>
       <p className="text-sm text-muted-foreground">分类</p>
       <h1 className="mt-1 text-2xl font-semibold tracking-tight">{known ? topic : "未知分类"}</h1>
       <p className="mt-2 text-sm text-muted-foreground">

@@ -3,15 +3,15 @@ import type { Role } from "@/lib/roles";
 export type WorkspaceArea = "console" | "me";
 
 export function canWriteRole(role: Role | null | undefined) {
-  return role === "author" || role === "editor" || role === "admin";
+  return role === "admin";
 }
 
 export function isStaffRole(role: Role | null | undefined) {
-  return role === "admin" || role === "editor";
+  return role === "admin";
 }
 
 export function homeForRole(role: Role | null | undefined): "/console" | "/me" {
-  return canWriteRole(role) ? "/console" : "/me";
+  return role === "admin" ? "/console" : "/me";
 }
 
 export function workspacePath(area: WorkspaceArea): "/console" | "/me" {

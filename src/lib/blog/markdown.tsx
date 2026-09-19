@@ -273,6 +273,17 @@ export function ArticleBody({ source, catalog = [] }: { source: string; catalog?
       return;
     }
 
+    if (block.startsWith("# ")) {
+      const id = headingId(heading);
+      heading += 1;
+      elements.push(
+        <h1 id={id} key={`h1-${index}`} className="mt-10 mb-4 scroll-mt-24 font-display text-2xl font-semibold tracking-tight">
+          {inline(block.slice(2), `h1-${index}`, catalog, localHeadings)}
+        </h1>,
+      );
+      return;
+    }
+
     const split = splitBlockId(block);
     elements.push(
       <p

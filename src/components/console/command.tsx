@@ -51,20 +51,12 @@ export function ConsoleCommand({
       void navigate({ to: "/posts/$slug", params: { slug: href.slice("/posts/".length) } });
       return;
     }
-    if (href === "/write") {
-      void navigate({ to: "/write" });
-      return;
-    }
     if (href === "/me") {
       void navigate({ to: "/me" });
       return;
     }
     if (href === "/membership") {
       void navigate({ to: "/membership" });
-      return;
-    }
-    if (href === "/links") {
-      void navigate({ to: "/links" });
       return;
     }
     void navigate({ to: "/" });
@@ -80,7 +72,7 @@ export function ConsoleCommand({
             autoFocus
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="搜索页面、文章或快捷操作"
+            placeholder="搜索"
             className="h-12 border-0 bg-transparent shadow-none focus-visible:ring-0"
           />
         </div>
@@ -110,7 +102,14 @@ export function ConsoleCommand({
                     <button
                       type="button"
                       className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left hover:bg-console-active"
-                      onClick={() => goHref(`/posts/${post.slug}`)}
+                      onClick={() => {
+                        onOpenChange(false);
+                        if (area === "console") {
+                          void navigate({ to: "/console", search: { section: "write", id: post.id } });
+                          return;
+                        }
+                        goHref(`/posts/${post.slug}`);
+                      }}
                     >
                       <span className="truncate text-sm">{post.title}</span>
                       <span className="ml-3 shrink-0 font-mono text-xs text-console-muted">{post.topic}</span>

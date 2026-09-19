@@ -59,9 +59,22 @@ export const MCP_TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "draft_post",
+    description:
+      "把 Markdown 存为草稿。前台不可见，可在控制台继续改。同一 slug 再次调用会覆盖草稿。YAML 头可含 title、slug、topic、tags、access、cover、excerpt。status 一律为 draft。写完要上线请再调用 publish_post 或 set_post_status。",
+    inputSchema: {
+      type: "object",
+      required: ["markdown"],
+      properties: {
+        markdown: stringProp("完整 Markdown，建议带 YAML 头"),
+      },
+      additionalProperties: false,
+    },
+  },
+  {
     name: "publish_post",
     description:
-      "用 Markdown 发布或更新文章。同一 slug 再次推送会覆盖并留下版本。YAML 头可含 title、slug、topic、tags、status、access（public|early|paid）、exclusiveDays、cover、excerpt。status 缺省为 published。",
+      "正式发布 Markdown 到前台。同一 slug 再次推送会覆盖并留下版本。草稿请用 draft_post。YAML 头可含 title、slug、topic、tags、status、access（public|early|paid）、exclusiveDays、cover、excerpt。不写 status 时按已发布处理。",
     inputSchema: {
       type: "object",
       required: ["markdown"],
@@ -94,7 +107,7 @@ export const MCP_TOOLS: ToolDef[] = [
   },
   {
     name: "set_post_status",
-    description: "把文章设为已发布或草稿。",
+    description: "把已有文章设为草稿或正式发布，不必重传正文。",
     inputSchema: {
       type: "object",
       required: ["slug", "status"],
@@ -160,7 +173,7 @@ export const MCP_TOOLS: ToolDef[] = [
 export const MCP_PROMPTS: PromptDef[] = [
   {
     name: "draft_technical_post",
-    description: "按折页的技术博客口径起草一篇 Markdown 文章，带 YAML 头和代码围栏。",
+    description: "按折页口径起草一篇 Markdown 草稿（status: draft），带 YAML 头和代码围栏。写完应调用 draft_post，不要直接发布。",
     arguments: [
       { name: "topic", description: "栏目，如 TypeScript / Rust / Go", required: true },
       { name: "title", description: "标题", required: true },

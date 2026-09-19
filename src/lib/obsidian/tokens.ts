@@ -1,5 +1,6 @@
-import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { getSql } from "@/lib/db";
+import { isFolioToken } from "./token-guard";
 
 export type TokenRow = {
   id: number;
@@ -9,18 +10,30 @@ export type TokenRow = {
   createdAt: string;
 };
 
-function hashToken(raw: string) {
+const DUMMY_HASH = "v2:" + "0".repeat(64);
+const LAST_USED_GAP_MS = 5 * 60 * 1000;
+
+function tokenPepper() {
+  const pepper = process.env.FOLIO_TOKEN_PEPPER?.trim() || process.env.BETTER_AUTH_SECRET?.trim();
+  return pepper && pepper.length >= 8 ? pepper : "folio-pat-hmac-v2";
+}
+
+function hashV1(raw: string) {
   return createHash("sha256").update(raw).digest("hex");
+}
+
+function hashV2(raw: string) {
+  return `v2:${createHmac("sha256", tokenPepper()).update(raw).digest("hex")}`;
 }
 
 export async function createUserToken(userId: string, name: string): Promise<{ token: string; item: TokenRow }> {
   const sql = await getSql();
-  const secret = randomBytes(24).toString("hex");
+  const secret = randomBytes(32).toString("base64url");
   const token = `folio_${secret}`;
   const prefix = token.slice(0, 12);
   const inserted = await sql`
     insert into api_tokens (user_id, name, token_hash, prefix)
-    values (${userId}, ${name.trim() || "Obsidian"}, ${hashToken(token)}, ${prefix})
+    values (${userId}, ${name.trim() || "Obsidian"}, ${hashV2(token)}, ${prefix})
     returning id, name, prefix, last_used_at, created_at
   `;
   const row = inserted[0] as {
@@ -55,19 +68,24 @@ export async function revokeUserToken(userId: string, id: number) {
 
 export async function userIdFromToken(raw: string): Promise<string | null> {
   const token = raw.trim();
-  if (!token.startsWith("folio_") || token.length < 20) return null;
+  if (!isFolioToken(token)) return null;
   const sql = await getSql();
-  const hash = hashToken(token);
-  const rows = await sql.query<{ id: number; user_id: string; token_hash: string }>(
-    `select id, user_id, token_hash from api_tokens where token_hash = $1 limit 1`,
-    [hash],
+  const v2 = hashV2(token);
+  const v1 = hashV1(token);
+  const rows = await sql.query<{ id: number; user_id: string; token_hash: string; last_used_at: string | null }>(
+    `select id, user_id, token_hash, last_used_at from api_tokens where token_hash = $1 or token_hash = $2 limit 1`,
+    [v2, v1],
   );
   const row = rows[0];
-  if (!row) return null;
-  const a = Buffer.from(row.token_hash);
-  const b = Buffer.from(hash);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  await sql`update api_tokens set last_used_at = ${new Date().toISOString()} where id = ${row.id}`;
+  const expected = row?.token_hash ?? DUMMY_HASH;
+  const presented = expected.startsWith("v2:") ? v2 : v1;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(presented);
+  if (!row || a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  const last = row.last_used_at ? new Date(row.last_used_at).getTime() : 0;
+  if (!Number.isFinite(last) || Date.now() - last > LAST_USED_GAP_MS) {
+    await sql`update api_tokens set last_used_at = ${new Date().toISOString()} where id = ${row.id}`;
+  }
   return row.user_id;
 }
 

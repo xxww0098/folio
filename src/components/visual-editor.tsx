@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { EditorContent, ReactNodeViewRenderer, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
@@ -8,6 +8,7 @@ import {
   Bold,
   CodeXml,
   GitFork,
+  Heading1,
   Heading2,
   Heading3,
   ImageIcon,
@@ -17,6 +18,7 @@ import {
   Quote,
 } from "lucide-react";
 import { htmlToMarkdown, markdownToHtml } from "@/lib/blog/html";
+import { markdownEditorExtension } from "@/lib/blog/markdown-editor";
 import { parseWikiInner, resolveWikiTarget, wikiDisplay, type WikiCatalogItem } from "@/lib/blog/wikilink";
 import { Button } from "@/components/ui/button";
 import { EditorImageView } from "@/components/editor-image";
@@ -33,27 +35,34 @@ export function VisualEditor({
   onChange,
   onRequestImage,
   catalog = [],
+  fill = false,
 }: {
   value: string;
   onChange: (markdown: string) => void;
   onRequestImage?: () => void;
   catalog?: WikiCatalogItem[];
+  fill?: boolean;
 }) {
+  const catalogRef = useRef(catalog);
+  catalogRef.current = catalog;
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        heading: { levels: [2, 3] },
+        heading: { levels: [1, 2, 3] },
         codeBlock: { languageClassPrefix: "language-" },
       }),
       EditorImage.configure({ inline: false, allowBase64: false }),
       Link.configure({ openOnClick: false, autolink: true }),
-      Placeholder.configure({ placeholder: "开始写技术文章。代码块请标明语言，例如 ts / rust / go。" }),
+      Placeholder.configure({
+        placeholder: "开始写正文",
+      }),
+      markdownEditorExtension(catalogRef),
     ],
     content: markdownToHtml(value),
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: "tiptap min-h-80 px-4 py-3 text-base leading-relaxed outline-none",
+        class: cn("tiptap px-1 py-4 text-lg leading-relaxed outline-none", fill ? "min-h-[calc(100dvh-10rem)]" : "min-h-80 px-4 py-3 text-base"),
       },
     },
     onUpdate: ({ editor: current }) => {
@@ -74,7 +83,7 @@ export function VisualEditor({
       editor.chain().focus().toggleCodeBlock().run();
       return;
     }
-    const lang = window.prompt("代码语言（ts / rust / go / python / sql / zig / bash / json）", "ts");
+    const lang = window.prompt("代码语言", "ts");
     if (lang === null) return;
     editor.chain().focus().toggleCodeBlock({ language: lang.trim() || "text" }).run();
   }
@@ -94,7 +103,7 @@ export function VisualEditor({
 
   function insertWiki() {
     if (!editor) return;
-    const inner = window.prompt("双链目标（别名、标题，或 别名#小节|显示名）", "");
+    const inner = window.prompt("要链接的文章", "");
     if (inner === null) return;
     const token = inner.trim();
     if (!token) return;
@@ -114,12 +123,22 @@ export function VisualEditor({
   }
 
   if (!editor) {
-    return <div className="min-h-80 rounded-lg bg-card px-4 py-10 text-sm text-muted-foreground">加载编辑器…</div>;
+    return <div className="px-1 py-10 text-sm text-console-muted">加载编辑器…</div>;
   }
 
   return (
-    <div className="overflow-hidden rounded-lg bg-card shadow-[var(--shadow-border)]">
-      <div className="flex flex-wrap items-center gap-1 border-b border-border px-2 py-1.5">
+    <div className={cn("flex flex-col", fill ? "min-h-0" : "overflow-hidden rounded-lg bg-card shadow-[var(--shadow-border)]")}>
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-1",
+          fill
+            ? "sticky top-0 z-10 -mx-1 border-b border-console-line bg-console-sidebar/95 px-1 py-1.5 backdrop-blur"
+            : "border-b border-border px-2 py-1.5",
+        )}
+      >
+        <Tool active={editor.isActive("heading", { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} label="一级标题">
+          <Heading1 className="size-4" />
+        </Tool>
         <Tool active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} label="二级标题">
           <Heading2 className="size-4" />
         </Tool>

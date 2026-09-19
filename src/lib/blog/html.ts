@@ -30,6 +30,7 @@ export function markdownToHtml(source: string): string {
       if (block === "---") return "<hr>";
       if (block.startsWith("### ")) return `<h3>${inlineMd(block.slice(4))}</h3>`;
       if (block.startsWith("## ")) return `<h2>${inlineMd(block.slice(3))}</h2>`;
+      if (block.startsWith("# ")) return `<h1>${inlineMd(block.slice(2))}</h1>`;
       if (block.startsWith("> ")) {
         const quote = block
           .split("\n")
@@ -110,7 +111,8 @@ function serializeBlocks(node: Element): string {
     }
     const el = child as HTMLElement;
     const tag = el.tagName.toLowerCase();
-    if (tag === "h2") parts.push(`## ${inlineText(el)}`);
+    if (tag === "h1") parts.push(`# ${inlineText(el)}`);
+    else if (tag === "h2") parts.push(`## ${inlineText(el)}`);
     else if (tag === "h3") parts.push(`### ${inlineText(el)}`);
     else if (tag === "blockquote") parts.push(`> ${inlineText(el)}`);
     else if (tag === "ul") {

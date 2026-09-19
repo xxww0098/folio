@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { SiteShell } from "@/components/site-shell";
+import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { getSiteChrome } from "@/lib/blog/server";
 
 export const Route = createFileRoute("/about")({
@@ -11,7 +11,7 @@ function AboutPage() {
   const chrome = Route.useLoaderData();
 
   return (
-    <SiteShell posts={chrome.posts} tags={chrome.tags} recentComments={chrome.recentComments} sidebar>
+    <SiteShell {...siteChromeProps(chrome)} sidebar>
       <article className="overflow-hidden rounded-xl bg-card p-6 shadow-md sm:p-8">
         <h1 className="text-2xl font-semibold tracking-tight">关于折页</h1>
         <p className="mt-6 text-base leading-relaxed text-foreground/90">

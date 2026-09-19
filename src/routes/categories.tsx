@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { SiteShell } from "@/components/site-shell";
+import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { getSiteChrome } from "@/lib/blog/server";
 import { TOPICS } from "@/lib/blog/types";
 
@@ -17,7 +17,7 @@ function CategoriesPage() {
   }).filter((item) => item.items.length > 0);
 
   return (
-    <SiteShell posts={chrome.posts} tags={chrome.tags} recentComments={chrome.recentComments} sidebar>
+    <SiteShell {...siteChromeProps(chrome)} sidebar>
       <h1 className="text-2xl font-semibold tracking-tight">分类</h1>
       <p className="mt-2 text-sm text-muted-foreground">按语言和主题进入对应文章。</p>
       <ul className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">

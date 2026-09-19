@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { SiteShell } from "@/components/site-shell";
+import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { getSiteChrome } from "@/lib/blog/server";
 import { listPhotos } from "@/lib/photos/server";
 import { formatZhDate } from "@/lib/format";
+import { requirePublicPage } from "@/lib/pages/server";
 
 export const Route = createFileRoute("/photos")({
+  beforeLoad: () => requirePublicPage("photos"),
   loader: async () => {
     const [chrome, photos] = await Promise.all([getSiteChrome(), listPhotos()]);
     return { chrome, photos };
@@ -21,7 +23,7 @@ function PhotosPage() {
   const visible = group === "全部" ? photos : photos.filter((photo) => photo.groupName === group);
 
   return (
-    <SiteShell posts={chrome.posts} tags={chrome.tags} recentComments={chrome.recentComments} sidebar>
+    <SiteShell {...siteChromeProps(chrome)} sidebar>
       <h1 className="text-2xl font-semibold tracking-tight">图库</h1>
       <p className="mt-2 text-sm text-muted-foreground">一些被留下来的画面。</p>
       <div className="mt-6 flex flex-wrap gap-2">

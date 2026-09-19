@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArticleCard } from "@/components/article-card";
 import { PAGE_SIZE, PageNav } from "@/components/page-nav";
-import { SiteShell } from "@/components/site-shell";
+import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { getSiteChrome } from "@/lib/blog/server";
 import { TOPICS } from "@/lib/blog/types";
 
@@ -16,13 +16,14 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const { posts, tags, recentComments } = Route.useLoaderData();
+  const chrome = Route.useLoaderData();
+  const { posts } = chrome;
   const page = Route.useSearch().page ?? 1;
   const start = (page - 1) * PAGE_SIZE;
   const slice = posts.slice(start, start + PAGE_SIZE);
 
   return (
-    <SiteShell posts={posts} tags={tags} recentComments={recentComments} sidebar>
+    <SiteShell {...siteChromeProps(chrome)} sidebar>
       <div className="folio-flow flex flex-wrap gap-2">
         <span className="inline-flex h-9 items-center rounded-full bg-card px-3 text-sm font-medium shadow-md">
           全部

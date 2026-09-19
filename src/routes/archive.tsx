@@ -1,19 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { SiteShell } from "@/components/site-shell";
+import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { Input } from "@/components/ui/input";
 import { getSiteChrome } from "@/lib/blog/server";
 import { TOPICS, type PostListItem } from "@/lib/blog/types";
 import { formatZhDate } from "@/lib/format";
+import { requirePublicPage } from "@/lib/pages/server";
 
 export const Route = createFileRoute("/archive")({
+  beforeLoad: () => requirePublicPage("archive"),
   loader: () => getSiteChrome(),
   head: () => ({ meta: [{ title: "归档 - 折页" }] }),
   component: ArchivePage,
 });
 
 function ArchivePage() {
-  const { posts, tags, recentComments } = Route.useLoaderData();
+  const chrome = Route.useLoaderData();
+  const { posts } = chrome;
   const [query, setQuery] = useState("");
   const [topic, setTopic] = useState<string>("全部");
 
@@ -30,14 +33,14 @@ function ArchivePage() {
   const grouped = useMemo(() => groupByYear(filtered), [filtered]);
 
   return (
-    <SiteShell posts={posts} tags={tags} recentComments={recentComments} sidebar>
+    <SiteShell {...siteChromeProps(chrome)} sidebar>
       <h1 className="text-2xl font-semibold tracking-tight">归档</h1>
       <p className="mt-2 text-sm text-muted-foreground">按年份浏览全部文章。</p>
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <Input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="搜索标题或导语"
+          placeholder="搜索文章"
           className="max-w-sm bg-card"
         />
       </div>

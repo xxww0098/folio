@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   createObsidianToken,
@@ -16,6 +15,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+
+function randomTokenName() {
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  return `obsidian-${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
 
 type SyncPost = {
   id: number;
@@ -159,9 +164,6 @@ export function ObsidianPanel() {
             <Button type="button" onClick={() => void onDownloadPlugin()} disabled={busy === "zip"}>
               {busy === "zip" ? "打包中…" : "下载插件"}
             </Button>
-            <Button asChild variant="outline">
-              <Link to="/obsidian">安装说明</Link>
-            </Button>
           </div>
         </div>
       </section>
@@ -182,6 +184,9 @@ export function ObsidianPanel() {
               onChange={(event) => setTokenName(event.target.value)}
             />
           </div>
+          <Button type="button" variant="outline" onClick={() => setTokenName(randomTokenName())}>
+            随机生成
+          </Button>
           <Button type="button" onClick={() => void onCreateToken()} disabled={busy === "token"}>
             {busy === "token" ? "签发中…" : "签发令牌"}
           </Button>

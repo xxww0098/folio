@@ -1,4 +1,5 @@
 import { resolveApiUserId } from "./auth";
+import { authFailDelay, authLock, clientAuthKey, noteAuthFailure, noteAuthSuccess } from "./token-guard";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -33,10 +34,25 @@ export function requestOrigin(request: Request) {
 }
 
 export async function requireApiUserId(request: Request): Promise<string | Response> {
+  const key = clientAuthKey(request, request.headers.get("authorization") ?? "");
+  const lock = authLock(key);
+  if (lock.locked) {
+    return new Response(JSON.stringify({ error: "尝试过多，请稍后再试" }), {
+      status: 429,
+      headers: {
+        ...CORS,
+        "Content-Type": "application/json; charset=utf-8",
+        "Retry-After": String(lock.retryAfterSec),
+      },
+    });
+  }
   const userId = await resolveApiUserId(request);
   if (!userId) {
+    noteAuthFailure(key);
+    await authFailDelay();
     return jsonError("请提供有效的个人令牌（Authorization: Bearer folio_…）", 401);
   }
+  noteAuthSuccess(key);
   return userId;
 }
 

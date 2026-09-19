@@ -31,6 +31,7 @@ describe("mcp catalog", () => {
       assert.equal(tool.inputSchema.type, "object");
       assert.ok(tool.description.length > 8);
     }
+    assert.ok(toolByName("draft_post"));
     assert.ok(toolByName("publish_post"));
     assert.ok(toolByName("get_post"));
     assert.ok(toolByName("delete_post"));

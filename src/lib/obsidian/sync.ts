@@ -17,16 +17,23 @@ export type SyncResult = {
   id: number;
   slug: string;
   created: boolean;
+  status: "draft" | "published";
   url: string;
   markdown: string;
 };
 
-export async function publishMarkdown(userId: string, markdown: string, origin: string): Promise<SyncResult> {
+export async function publishMarkdown(
+  userId: string,
+  markdown: string,
+  origin: string,
+  options?: { status?: "draft" | "published" },
+): Promise<SyncResult> {
   const { matter, body } = splitFrontMatter(markdown);
   const title = (matter.title ?? "").trim() || firstHeading(body) || "未命名笔记";
   const slugHint = matter.folio?.name || matter.slug;
   const topic = topicFromMatter(matter, TOPICS[0] as Topic);
-  const status = matter.status ?? (matter.folio?.publish === false ? "draft" : "published");
+  const status =
+    options?.status ?? matter.status ?? (matter.folio?.publish === false ? "draft" : "published");
   const cover = firstCover(matter, body);
   const result = await upsertPostBySlug({
     userId,
@@ -44,7 +51,7 @@ export async function publishMarkdown(userId: string, markdown: string, origin: 
   });
   const detail = await loadDetail(result.id);
   const next = serializeNote(toMatter(detail, origin), detail.body);
-  return { ...result, url: `${origin}/posts/${result.slug}`, markdown: next };
+  return { ...result, status, url: `${origin}/posts/${result.slug}`, markdown: next };
 }
 
 export async function listSyncPosts(userId: string, canEditAll: boolean) {

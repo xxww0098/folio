@@ -1,5 +1,6 @@
 import type { MemberRow, Role } from "@/lib/roles";
 import type { AccessGate, AccessMode } from "@/lib/membership/access";
+import type { FrontPageFlags } from "@/lib/pages/visibility";
 import type { WikiGraph } from "./wikilink";
 
 export const TOPICS = ["TypeScript", "Rust", "Go", "Python", "SQL", "Zig", "架构"] as const;
@@ -111,6 +112,7 @@ export type SiteChrome = {
   posts: PostListItem[];
   tags: Array<TagRef & { count: number }>;
   recentComments: RecentComment[];
+  pages: FrontPageFlags;
 };
 
 export function isTopic(value: string): value is Topic {

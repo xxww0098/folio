@@ -1,6 +1,6 @@
 export const MCP_PROTOCOL_VERSION = "2025-03-26";
 export const MCP_SERVER_NAME = "folio";
-export const MCP_SERVER_VERSION = "1.0.0";
+export const MCP_SERVER_VERSION = "1.1.0";
 
 const SUPPORTED_VERSIONS = new Set([
   "2024-11-05",
