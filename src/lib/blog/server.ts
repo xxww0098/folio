@@ -16,6 +16,8 @@ import {
 } from "@/lib/membership/server";
 import { clampExclusiveDays, isAccessMode, type AccessMode } from "@/lib/membership/access";
 import { optionalAuthMiddleware } from "@/lib/membership/session";
+import { getFrontPages } from "@/lib/pages/server";
+import { DEFAULT_FRONT_PAGES } from "@/lib/pages/visibility";
 import {
   attachTags,
   ensureSiteExtras,
@@ -267,8 +269,12 @@ async function buildSiteChrome(): Promise<SiteChrome> {
     sql,
     `where p.status = 'published' and p.deleted_at is null order by p.featured desc, p.published_at desc`,
   );
-  const [tags, recentComments] = await Promise.all([fetchTagCloud(sql), fetchRecentComments(sql)]);
-  return { posts, tags, recentComments };
+  const [tags, recentComments, pages] = await Promise.all([
+    fetchTagCloud(sql),
+    fetchRecentComments(sql),
+    getFrontPages().catch(() => ({ ...DEFAULT_FRONT_PAGES })),
+  ]);
+  return { posts, tags, recentComments, pages };
 }
 
 export const getSiteChrome = createServerFn({ method: "GET" }).handler(async (): Promise<SiteChrome> => {
@@ -364,9 +370,9 @@ export const listMyPosts = createServerFn({ method: "GET" })
   });
 
 const postInputSchema = z.object({
-  title: z.string().trim().min(1).max(80),
-  excerpt: z.string().trim().min(1).max(180),
-  body: z.string().trim().min(20).max(20000),
+  title: z.string().trim().max(80),
+  excerpt: z.string().trim().max(180),
+  body: z.string().trim().max(20000),
   topic: z.string().trim().min(1),
   coverImage: z.string().trim().max(300).nullable().optional(),
   coverAlt: z.string().trim().max(120).nullable().optional(),
@@ -375,18 +381,28 @@ const postInputSchema = z.object({
   allowComments: z.boolean().optional(),
   accessMode: z.enum(["public", "early", "paid"]).optional(),
   exclusiveDays: z.number().int().min(1).max(365).optional(),
+  recordRevision: z.boolean().optional(),
 });
+
+function assertPublishable(data: { status: string; title: string; excerpt: string; body: string }) {
+  if (data.status !== "published") return;
+  if (!data.title.trim()) throw new Error("标题不能为空");
+  if (!data.excerpt.trim()) throw new Error("导语不能为空");
+  if (data.body.trim().length < 20) throw new Error("正文太短");
+}
 
 export const createPost = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(postInputSchema)
-  .handler(async ({ context, data }): Promise<{ slug: string }> => {
+  .handler(async ({ context, data }): Promise<{ slug: string; id: number }> => {
     if (!isTopic(data.topic)) throw new Error("未知栏目");
+    assertPublishable(data);
     const actor = await getActor(context.userId);
     if (!actor.canWrite) throw new Error("没有权限");
     const sql = await getSql();
     const authorName = await displayNameFor(sql, context.userId, "作者");
-    const slug = makeSlug(data.title);
+    const title = data.title.trim() || "未命名";
+    const slug = makeSlug(title);
     const minutes = readingMinutesFromBody(data.body);
     const publishedAt = data.status === "published" ? new Date().toISOString() : null;
     const cover = data.coverImage?.trim() || null;
@@ -400,15 +416,16 @@ export const createPost = createServerFn({ method: "POST" })
         cover_image, cover_alt, topic, status, reading_minutes,
         featured, published_at, allow_comments, access_mode, exclusive_days
       ) values (
-        ${context.userId}, ${authorName}, ${slug}, ${data.title}, ${data.excerpt},
+        ${context.userId}, ${authorName}, ${slug}, ${title}, ${data.excerpt},
         ${data.body}, ${cover}, ${coverAlt}, ${data.topic}, ${data.status},
         ${minutes}, ${false}, ${publishedAt}, ${allowComments}, ${accessMode}, ${exclusiveDays}
       )
       returning id
     `;
     const id = (inserted[0] as { id: number } | undefined)?.id;
-    if (id) await replacePostTags(sql, id, data.tags ?? []);
-    return { slug };
+    if (!id) throw new Error("无法保存");
+    await replacePostTags(sql, id, data.tags ?? []);
+    return { slug, id };
   });
 
 const updateSchema = postInputSchema.extend({
@@ -422,18 +439,22 @@ export const updatePost = createServerFn({ method: "POST" })
     if (!isTopic(data.topic)) throw new Error("未知栏目");
     const sql = await getSql();
     const { row: current } = await requirePostAccess(sql, context.userId, data.id);
+    assertPublishable(data);
     const editorName = await displayNameFor(sql, context.userId, "作者");
-    await sql`
-      insert into post_revisions (post_id, title, excerpt, body, editor_id, editor_name)
-      values (${current.id}, ${current.title}, ${current.excerpt}, ${current.body}, ${context.userId}, ${editorName})
-    `;
-    await sql`delete from post_revisions where post_id = ${current.id} and id not in (
-      select id from (
-        select id from post_revisions where post_id = ${current.id} order by created_at desc limit 20
-      ) kept
-    )`;
+    if (data.recordRevision !== false) {
+      await sql`
+        insert into post_revisions (post_id, title, excerpt, body, editor_id, editor_name)
+        values (${current.id}, ${current.title}, ${current.excerpt}, ${current.body}, ${context.userId}, ${editorName})
+      `;
+      await sql`delete from post_revisions where post_id = ${current.id} and id not in (
+        select id from (
+          select id from post_revisions where post_id = ${current.id} order by created_at desc limit 20
+        ) kept
+      )`;
+    }
 
     const minutes = readingMinutesFromBody(data.body);
+    const title = data.title.trim() || "未命名";
     const publishedAt =
       data.status === "published" ? (current.published_at ?? new Date().toISOString()) : null;
     const cover = data.coverImage?.trim() || null;
@@ -444,7 +465,7 @@ export const updatePost = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
     await sql`
       update posts set
-        title = ${data.title},
+        title = ${title},
         excerpt = ${data.excerpt},
         body = ${data.body},
         topic = ${data.topic},

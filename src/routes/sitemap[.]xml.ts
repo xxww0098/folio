@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { listPublishedPosts } from "@/lib/blog/server";
+import { FRONT_PAGE_META } from "@/lib/pages/visibility";
+import { getFrontPages } from "@/lib/pages/server";
 
 const ENT: Record<string, string> = {
   "&": "\u0026amp;",
@@ -18,7 +20,16 @@ export const Route = createFileRoute("/sitemap.xml")({
       GET: async ({ request }) => {
         const origin = new URL(request.url).origin;
         const posts = await listPublishedPosts();
-        const staticPaths = ["/", "/archive", "/categories", "/tags", "/moments", "/photos", "/links", "/about"];
+        const pages = await getFrontPages();
+        const staticPaths = [
+          "/",
+          "/categories",
+          "/tags",
+          "/about",
+          ...Object.entries(FRONT_PAGE_META)
+            .filter(([key]) => pages[key as keyof typeof pages])
+            .map(([, meta]) => meta.path),
+        ];
         const urls = [
           ...staticPaths.map((path) => `${origin}${path}`),
           ...posts.map((post) => `${origin}/posts/${post.slug}`),

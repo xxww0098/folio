@@ -7,20 +7,21 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { PostListItem } from "@/lib/blog/types";
+import { DEFAULT_FRONT_PAGES, type FrontPage, type FrontPageFlags } from "@/lib/pages/visibility";
 import { cn } from "@/lib/utils";
 
-const NAV = [
+const NAV: Array<{ to: "/" | "/moments" | "/photos" | "/archive" | "/links" | "/about"; label: string; page?: FrontPage }> = [
   { to: "/", label: "首页" },
-  { to: "/membership", label: "会员" },
-  { to: "/moments", label: "瞬间" },
-  { to: "/photos", label: "图库" },
-  { to: "/archive", label: "归档" },
-  { to: "/links", label: "友链" },
+  { to: "/moments", label: "瞬间", page: "moments" },
+  { to: "/photos", label: "图库", page: "photos" },
+  { to: "/archive", label: "归档", page: "archive" },
+  { to: "/links", label: "友链", page: "links" },
   { to: "/about", label: "关于" },
-] as const;
+];
 
-export function SiteHeader({ posts }: { posts: PostListItem[] }) {
+export function SiteHeader({ posts, pages = DEFAULT_FRONT_PAGES }: { posts: PostListItem[]; pages?: FrontPageFlags }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const items = NAV.filter((item) => !item.page || pages[item.page]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-header-foreground/10 bg-header text-header-foreground">
@@ -33,7 +34,7 @@ export function SiteHeader({ posts }: { posts: PostListItem[] }) {
         </Link>
 
         <nav className="ml-2 hidden items-center md:flex">
-          {NAV.map((item) => {
+          {items.map((item) => {
             const active =
               item.to === "/"
                 ? pathname === "/"
@@ -78,7 +79,7 @@ export function SiteHeader({ posts }: { posts: PostListItem[] }) {
                 <SheetTitle>菜单</SheetTitle>
               </SheetHeader>
               <nav className="flex flex-col gap-1">
-                {NAV.map((item) => (
+                {items.map((item) => (
                   <SheetTrigger key={item.to} asChild>
                     <Link
                       to={item.to}
@@ -88,11 +89,6 @@ export function SiteHeader({ posts }: { posts: PostListItem[] }) {
                     </Link>
                   </SheetTrigger>
                 ))}
-                <SheetTrigger asChild>
-                  <Link to="/themes" className="flex h-12 items-center rounded-md px-3 text-base hover:bg-secondary">
-                    主题
-                  </Link>
-                </SheetTrigger>
               </nav>
               <div className="mt-6">
                 <AccountSlot tone="default" />

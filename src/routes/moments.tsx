@@ -6,11 +6,13 @@ import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { getSiteChrome } from "@/lib/blog/server";
 import { formatRelative } from "@/lib/format";
 import { createMoment, deleteMoment, listMoments } from "@/lib/moments/server";
+import { requirePublicPage } from "@/lib/pages/server";
 import { Button } from "@/components/ui/button";
-import { SiteShell } from "@/components/site-shell";
+import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { Textarea } from "@/components/ui/textarea";
 
 export const Route = createFileRoute("/moments")({
+  beforeLoad: () => requirePublicPage("moments"),
   loader: async () => {
     const [chrome, moments] = await Promise.all([getSiteChrome(), listMoments()]);
     return { chrome, moments };
@@ -52,7 +54,7 @@ function MomentsPage() {
   }
 
   return (
-    <SiteShell posts={chrome.posts} tags={chrome.tags} recentComments={chrome.recentComments} sidebar>
+    <SiteShell {...siteChromeProps(chrome)} sidebar>
       <h1 className="text-2xl font-semibold tracking-tight">瞬间</h1>
       <p className="mt-2 text-sm text-muted-foreground">短一点的记录，不必写成文章。</p>
 
@@ -67,7 +69,7 @@ function MomentsPage() {
           <Textarea
             value={body}
             onChange={(event) => setBody(event.target.value)}
-            placeholder="这一刻想留下什么？"
+            placeholder="写一句这一刻"
             maxLength={280}
             className="min-h-24"
           />

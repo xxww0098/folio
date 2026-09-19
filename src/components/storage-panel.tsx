@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,12 +56,15 @@ export function StoragePanel() {
   const [settings, setSettings] = useState<StoragePublicSettings | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [hint, setHint] = useState("");
+  const skip = useRef(true);
 
   useEffect(() => {
     void getStorageSettings()
       .then((next) => {
         setSettings(next);
         setDraft(toDraft(next));
+        skip.current = true;
       })
       .catch(() => {
         const fallback: StoragePublicSettings = {
@@ -82,27 +85,37 @@ export function StoragePanel() {
         };
         setSettings(fallback);
         setDraft(toDraft(fallback));
+        skip.current = true;
       });
   }, []);
 
   function patch(next: Partial<Draft>) {
     setDraft((current) => (current ? { ...current, ...next } : current));
+    setHint("");
   }
 
-  async function onSave() {
+  useEffect(() => {
     if (!draft) return;
-    setBusy("save");
-    try {
-      const next = await setStorageSettings({ data: payload(draft) });
-      setSettings(next);
-      setDraft({ ...toDraft(next), secretKey: "" });
-      toast.success(next.driver === "s3" ? "新上传将写入对象存储" : "新上传将写入数据库");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "无法保存");
-    } finally {
-      setBusy(null);
+    if (skip.current) {
+      skip.current = false;
+      return;
     }
-  }
+    const timer = window.setTimeout(() => {
+      setBusy("save");
+      void setStorageSettings({ data: payload(draft) })
+        .then((next) => {
+          skip.current = true;
+          setSettings(next);
+          setDraft({ ...toDraft(next), secretKey: "" });
+          setHint(next.driver === "s3" ? "新上传将写入对象存储" : "新上传将写入数据库");
+        })
+        .catch(() => {
+          setHint("还没写完整，暂不保存");
+        })
+        .finally(() => setBusy(null));
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [draft]);
 
   async function onTest() {
     if (!draft) return;
@@ -138,7 +151,7 @@ export function StoragePanel() {
   return (
     <div className="mt-4 max-w-xl space-y-5">
       <p className="text-sm text-muted-foreground">
-        默认把图片写进数据库，换机器时跟着备份走。图多了可以改成 S3 兼容的对象存储（R2 / MinIO / 阿里云 OSS）。文章里的地址不变。
+        默认把图片写进数据库，换机器时跟着备份走。图多了可以改成 S3 兼容的对象存储（R2 / MinIO / 阿里云 OSS）。文章里的地址不变。改完自动保存。
       </p>
       <p className="text-sm text-muted-foreground">
         {settings.pgCount} 张在数据库
@@ -165,7 +178,7 @@ export function StoragePanel() {
               id="s3-endpoint"
               value={draft.endpoint}
               onChange={(event) => patch({ endpoint: event.target.value })}
-              placeholder="https://<id>.r2.cloudflarestorage.com"
+              placeholder="对象存储地址"
               autoComplete="off"
               spellCheck={false}
               className="font-mono"
@@ -189,7 +202,7 @@ export function StoragePanel() {
                 id="s3-region"
                 value={draft.region}
                 onChange={(event) => patch({ region: event.target.value })}
-                placeholder="auto"
+                placeholder="区域"
                 autoComplete="off"
                 spellCheck={false}
                 className="font-mono"
@@ -241,7 +254,7 @@ export function StoragePanel() {
               id="s3-public"
               value={draft.publicBase}
               onChange={(event) => patch({ publicBase: event.target.value })}
-              placeholder="https://cdn.example.com"
+              placeholder="公开访问地址"
               autoComplete="off"
               spellCheck={false}
               className="font-mono"
@@ -253,7 +266,7 @@ export function StoragePanel() {
               id="s3-prefix"
               value={draft.prefix}
               onChange={(event) => patch({ prefix: event.target.value })}
-              placeholder="folio"
+              placeholder="目录名"
               autoComplete="off"
               spellCheck={false}
               className="font-mono"
@@ -265,10 +278,8 @@ export function StoragePanel() {
           还有 {settings.s3Count} 张图在对象存储。删桶之前先收回数据库。
         </p>
       ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button disabled={busy !== null} onClick={() => void onSave()}>
-          保存
-        </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-xs text-muted-foreground">{busy === "save" ? "正在保存…" : hint || "改完会自动保存"}</p>
         {draft.driver === "s3" ? (
           <Button variant="outline" disabled={busy !== null} onClick={() => void onTest()}>
             {busy === "test" ? "测试中…" : "测试"}

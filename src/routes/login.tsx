@@ -12,6 +12,7 @@ import { SiteShell } from "@/components/site-shell";
 import { FolioMark } from "@/components/folio-mark";
 import { listPublishedPosts } from "@/lib/blog/server";
 import { getWorkspaceAccess } from "@/lib/entrance/server";
+import { getFrontPages } from "@/lib/pages/server";
 import { claimAccount, type Role } from "@/lib/roles";
 import { homeForRole, canWriteRole } from "@/lib/workspace";
 
@@ -39,15 +40,15 @@ export const Route = createFileRoute("/login")({
     return { ...(next ? { next } : {}), ...(mode ? { mode } : {}) };
   },
   loader: async () => {
-    const [posts, access] = await Promise.all([listPublishedPosts(), getWorkspaceAccess()]);
-    return { posts, access };
+    const [posts, access, pages] = await Promise.all([listPublishedPosts(), getWorkspaceAccess(), getFrontPages()]);
+    return { posts, access, pages };
   },
   head: () => ({ meta: [{ title: "登录 - 折页" }] }),
   component: Login,
 });
 
 function Login() {
-  const { posts, access } = Route.useLoaderData();
+  const { posts, access, pages } = Route.useLoaderData();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const next = search.next ?? "/";
@@ -56,7 +57,7 @@ function Login() {
   const signedInHome = continuePath(next, access.role, registering);
 
   return (
-    <SiteShell posts={posts}>
+    <SiteShell posts={posts} pages={pages}>
       <div className="mx-auto grid min-h-[70vh] max-w-md place-items-center px-4 py-16">
         <div className="w-full rounded-xl bg-card p-8 shadow-md">
           <div className="mb-5 flex items-center gap-2">

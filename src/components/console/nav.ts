@@ -21,6 +21,7 @@ import type { WorkspaceArea } from "@/lib/workspace";
 export const CONSOLE_SECTIONS = [
   "dashboard",
   "posts",
+  "write",
   "comments",
   "files",
   "trash",
@@ -29,6 +30,7 @@ export const CONSOLE_SECTIONS = [
   "plans",
   "settings",
   "appearance",
+  "links",
   "members",
   "backup",
   "entrance",
@@ -47,6 +49,7 @@ export const ADMIN_ONLY_SECTIONS: ConsoleSection[] = [
   "backup",
   "entrance",
   "storage",
+  "links",
 ];
 
 export function isConsoleSection(value: unknown): value is ConsoleSection {
@@ -101,7 +104,7 @@ export const CONSOLE_NAV: ConsoleNavGroup[] = [
     label: "外观",
     items: [
       { id: "appearance", label: "主题", icon: Palette, section: "appearance" },
-      { id: "links", label: "友链", icon: Link2, href: "/links" },
+      { id: "links", label: "友链", icon: Link2, section: "links" },
     ],
   },
   {
@@ -138,6 +141,7 @@ export const ME_NAV: ConsoleNavGroup[] = [
 export const SECTION_META: Record<ConsoleSection, { label: string; icon: LucideIcon }> = {
   dashboard: { label: "仪表盘", icon: Gauge },
   posts: { label: "文章", icon: FileText },
+  write: { label: "写文章", icon: FileText },
   comments: { label: "评论", icon: MessageSquare },
   files: { label: "附件", icon: Folder },
   trash: { label: "回收站", icon: Trash2 },
@@ -146,6 +150,7 @@ export const SECTION_META: Record<ConsoleSection, { label: string; icon: LucideI
   plans: { label: "会员", icon: Sparkles },
   settings: { label: "设置", icon: Settings },
   appearance: { label: "主题", icon: Palette },
+  links: { label: "友链", icon: Link2 },
   members: { label: "用户", icon: Users },
   backup: { label: "备份", icon: Puzzle },
   entrance: { label: "入口", icon: Eye },
@@ -163,7 +168,7 @@ export type CommandItem = {
 export const CONSOLE_COMMAND_ITEMS: CommandItem[] = [
   { id: "dashboard", label: "仪表盘", hint: "总览与快捷入口", section: "dashboard" },
   { id: "posts", label: "文章", hint: "内容", section: "posts" },
-  { id: "write", label: "创建文章", hint: "写作", href: "/write" },
+  { id: "write", label: "写文章", hint: "内容", section: "write" },
   { id: "comments", label: "评论", hint: "内容", section: "comments" },
   { id: "files", label: "附件", hint: "内容", section: "files" },
   { id: "trash", label: "回收站", hint: "内容", section: "trash" },
@@ -172,7 +177,7 @@ export const CONSOLE_COMMAND_ITEMS: CommandItem[] = [
   { id: "plans", label: "会员", hint: "系统", section: "plans" },
   { id: "settings", label: "设置", hint: "系统", section: "settings" },
   { id: "appearance", label: "主题", hint: "外观", section: "appearance" },
-  { id: "links", label: "友链", hint: "外观", href: "/links" },
+  { id: "links", label: "友链", hint: "外观", section: "links" },
   { id: "members", label: "用户", hint: "系统", section: "members" },
   { id: "backup", label: "备份", hint: "系统", section: "backup" },
   { id: "site", label: "查看站点", hint: "前台", href: "/" },

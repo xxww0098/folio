@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArticleCard } from "@/components/article-card";
-import { SiteShell } from "@/components/site-shell";
+import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { getSiteChrome, listPostsByTag } from "@/lib/blog/server";
 
 export const Route = createFileRoute("/tags/$tag")({
@@ -17,7 +17,7 @@ export const Route = createFileRoute("/tags/$tag")({
 function TagPage() {
   const { chrome, tag, posts } = Route.useLoaderData();
   return (
-    <SiteShell posts={chrome.posts} tags={chrome.tags} recentComments={chrome.recentComments} sidebar>
+    <SiteShell {...siteChromeProps(chrome)} sidebar>
       <p className="text-sm text-muted-foreground">标签</p>
       <h1 className="mt-1 text-2xl font-semibold tracking-tight">{tag ? `#${tag.name}` : "未知标签"}</h1>
       <p className="mt-2 text-sm text-muted-foreground">

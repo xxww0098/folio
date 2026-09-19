@@ -75,6 +75,7 @@ function isActive(row: SubRow | undefined, now = Date.now()) {
 
 function planLabel(plan: string | null) {
   if (plan === "monthly") return "月卡";
+  if (plan === "monthly_auto") return "连续包月";
   if (plan === "yearly") return "年卡";
   if (plan === "comp") return "赠送";
   return null;
@@ -105,7 +106,7 @@ async function readSubscription(userId: string): Promise<SubRow | undefined> {
 async function isEditorOrAdmin(userId: string) {
   const sql = await getSql();
   const rows = await sql.query<{ role: string }>(`select role from user_roles where user_id = $1`, [userId]);
-  return rows[0]?.role === "admin" || rows[0]?.role === "editor";
+  return rows[0]?.role === "admin";
 }
 
 export async function getViewerFlags(userId: string | null) {
@@ -241,7 +242,7 @@ export const getMyMembership = createServerFn({ method: "GET" })
 
 export const startSubscription = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(z.object({ plan: z.enum(["monthly", "yearly"]) }))
+  .validator(z.object({ plan: z.enum(["monthly", "monthly_auto", "yearly"]) }))
   .handler(async ({ context, data }): Promise<Membership> => {
     const plan = PLANS.find((item) => item.id === data.plan);
     if (!plan) throw new Error("未知方案");
@@ -328,6 +329,7 @@ export const createRedeemCode = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(
     z.object({
+      plan: z.enum(["monthly", "yearly"]),
       days: z.number().int().min(1).max(3650).optional(),
       maxUses: z.number().int().min(1).max(999).optional(),
       note: z.string().trim().max(40).optional(),
@@ -338,18 +340,32 @@ export const createRedeemCode = createServerFn({ method: "POST" })
     if (!actor.isAdmin) throw new Error("没有权限");
     const sql = await getSql();
     const code = `FOLIO-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const days = data.days ?? (data.plan === "monthly" ? 30 : 365);
     await sql`
       insert into redeem_codes (code, plan, days, max_uses, note, created_by)
       values (
         ${code},
-        ${"yearly"},
-        ${data.days ?? 365},
+        ${data.plan},
+        ${days},
         ${data.maxUses ?? 5},
         ${data.note ?? ""},
         ${context.userId}
       )
     `;
     return { code };
+  });
+
+export const deleteRedeemCode = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ id: z.number().int().positive() }))
+  .handler(async ({ context, data }): Promise<{ ok: true }> => {
+    const actor = await getActor(context.userId);
+    if (!actor.isAdmin) throw new Error("没有权限");
+    const sql = await getSql();
+    const rows = await sql.query<{ id: number }>(`select id from redeem_codes where id = $1 limit 1`, [data.id]);
+    if (!rows[0]) throw new Error("兑换码不存在");
+    await sql`delete from redeem_codes where id = ${data.id}`;
+    return { ok: true };
   });
 
 export const listMembershipAdmin = createServerFn({ method: "GET" })

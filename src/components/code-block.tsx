@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { highlight, languageInfo, type FenceMeta } from "@/lib/blog/highlight";
 import { cn } from "@/lib/utils";
 
@@ -24,26 +25,11 @@ export function CodeBlock({ lang, filename, highlights, code }: FenceMeta) {
   const [copied, setCopied] = useState(false);
   const numbered = lines.length > 1;
 
-  async function copy() {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(code);
-      } else {
-        throw new Error("clipboard unavailable");
-      }
-    } catch {
-      const input = document.createElement("textarea");
-      input.value = code;
-      input.setAttribute("readonly", "");
-      input.style.position = "fixed";
-      input.style.left = "-9999px";
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      input.remove();
-    }
+  function copy() {
     setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
+    toast.success("已复制代码");
+    window.setTimeout(() => setCopied(false), 1800);
+    void writeClipboard(code);
   }
 
   return (
@@ -57,10 +43,13 @@ export function CodeBlock({ lang, filename, highlights, code }: FenceMeta) {
         <button
           type="button"
           onClick={() => void copy()}
-          className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs text-code-muted transition-colors hover:bg-white/5 hover:text-code-fg"
-          aria-label="复制代码"
+          className={cn(
+            "ml-auto inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs transition-colors",
+            copied ? "text-code-str" : "text-code-muted hover:bg-white/5 hover:text-code-fg",
+          )}
+          aria-label={copied ? "已复制" : "复制代码"}
         >
-          {copied ? <Check className="size-3.5 text-code-str" /> : <Copy className="size-3.5" />}
+          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
           {copied ? "已复制" : "复制"}
         </button>
       </figcaption>
@@ -96,4 +85,24 @@ export function CodeBlock({ lang, filename, highlights, code }: FenceMeta) {
       </pre>
     </figure>
   );
+}
+
+async function writeClipboard(code: string) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(code);
+      return;
+    }
+    throw new Error("clipboard unavailable");
+  } catch {
+    const input = document.createElement("textarea");
+    input.value = code;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand("copy");
+    input.remove();
+  }
 }

@@ -10,6 +10,12 @@ import { createObsidianToken } from "@/lib/obsidian/server";
 import { MCP_TOOLS } from "@/lib/mcp/catalog";
 import { claudeCli, cursorConfig, mcpEndpoint, SAMPLE_MARKDOWN, stdioBridge, vscodeConfig } from "@/lib/mcp/snippets";
 
+function randomTokenName() {
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  return `agent-${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+
 export function McpPanel({ showTokens = true }: { showTokens?: boolean }) {
   const { user, isPending } = useCurrentUserState();
   const [origin, setOrigin] = useState("");
@@ -119,11 +125,13 @@ export function McpPanel({ showTokens = true }: { showTokens?: boolean }) {
       {showTokens ? (
         <section className="rounded-xl bg-card p-5 shadow-md">
           <h2 className="text-base font-semibold">个人令牌</h2>
-          <p className="mt-1 text-sm text-muted-foreground">完整字符串只出现一次。远程 Agent 必须把它放在 Authorization 头里。</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            完整字符串只出现一次。256 位随机密钥，服务端只存 HMAC。猜错几次会暂时锁定。
+          </p>
           {!isPending && !user ? (
             <div className="mt-4">
               <Button asChild>
-                <Link to="/login" search={{ next: "/mcp" }}>
+                <Link to="/login" search={{ next: "/console?section=agent" }}>
                   登录后签发
                 </Link>
               </Button>
@@ -141,6 +149,13 @@ export function McpPanel({ showTokens = true }: { showTokens?: boolean }) {
                 onChange={(event) => setTokenName(event.target.value)}
               />
             </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTokenName(randomTokenName())}
+            >
+              随机生成
+            </Button>
             <Button type="button" onClick={() => void onCreateToken()} disabled={busy === "token" || isPending}>
               {busy === "token" ? "签发中…" : "签发令牌"}
             </Button>
@@ -200,7 +215,8 @@ export function McpPanel({ showTokens = true }: { showTokens?: boolean }) {
       <section className="rounded-xl bg-card p-5 shadow-md">
         <h2 className="text-base font-semibold">推送格式</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          调用 <span className="font-mono text-xs">publish_post</span> 时传入完整 Markdown。同一 slug 再次推送会覆盖并留下版本。
+          新稿先调用 <span className="font-mono text-xs">draft_post</span> 存草稿，确认后再{" "}
+          <span className="font-mono text-xs">publish_post</span> 发布。同一 slug 再次推送会覆盖并留下版本。
         </p>
         <div className="mt-4">
           <CodeBlock lang="yaml" filename="note.md" highlights={[]} code={SAMPLE_MARKDOWN} />

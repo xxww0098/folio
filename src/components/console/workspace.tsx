@@ -7,6 +7,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import {
   deletePost,
   getAuthorDashboard,
+  getPostForEdit,
   listPublishedPosts,
   purgePost,
   restorePost,
@@ -17,10 +18,11 @@ import {
 import { deleteComment } from "@/lib/comments/server";
 import { deleteAttachment, listAttachments, uploadAttachment, type AttachmentItem } from "@/lib/attachments/server";
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
-import type { AuthorDashboard, PostListItem } from "@/lib/blog/types";
+import type { AuthorDashboard, PostDetail, PostListItem } from "@/lib/blog/types";
 import { formatZhDate } from "@/lib/format";
 import {
   createRedeemCode,
+  deleteRedeemCode,
   grantSubscription,
   listMembershipAdmin,
   revokeSubscription,
@@ -30,11 +32,14 @@ import {
 import { ACCESS_LABEL } from "@/lib/membership/access";
 import { canWriteRole, workspacePath, type WorkspaceArea } from "@/lib/workspace";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ObsidianPanel } from "@/components/obsidian-panel";
 import { McpPanel } from "@/components/mcp-panel";
 import { ThemeGallery } from "@/components/theme-gallery";
+import { LinksPanel } from "./links-panel";
+import { PagesPanel } from "./pages-panel";
 import { ReleaseBanner } from "@/components/release-banner";
 import { EntrancePanel } from "@/components/entrance-panel";
 import { BackupPanel } from "@/components/backup-panel";
@@ -42,6 +47,7 @@ import { StoragePanel } from "@/components/storage-panel";
 import { ConsoleDashboard } from "./dashboard";
 import { ME_SECTIONS, type ConsoleSection } from "./nav";
 import { ConsoleShell } from "./shell";
+import { WriteForm } from "@/components/write-form";
 
 export type WorkspaceLoader = {
   posts: PostListItem[];
@@ -71,10 +77,12 @@ export async function loadWorkspace(area: WorkspaceArea): Promise<WorkspaceLoade
 export function WorkspaceApp({
   area,
   section,
+  postId,
   initial,
 }: {
   area: WorkspaceArea;
   section: ConsoleSection;
+  postId?: number;
   initial: WorkspaceLoader;
 }) {
   const navigate = useNavigate();
@@ -83,10 +91,36 @@ export function WorkspaceApp({
   const [members, setMembers] = useState(initial.members);
   const [busy, setBusy] = useState<string | null>(null);
   const [files, setFiles] = useState<AttachmentItem[]>([]);
+  const [editPost, setEditPost] = useState<PostDetail | undefined>(undefined);
+  const [editReady, setEditReady] = useState(section !== "write" || !postId);
   const scope = area === "me" ? "self" : "all";
   const loginNext = workspacePath(area);
 
   const userId = user?.id;
+  useEffect(() => {
+    if (section !== "write" || !postId) {
+      setEditPost(undefined);
+      setEditReady(true);
+      return;
+    }
+    let cancelled = false;
+    setEditReady(false);
+    void getPostForEdit({ data: postId })
+      .then((post) => {
+        if (cancelled) return;
+        setEditPost(post ?? undefined);
+        setEditReady(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEditPost(undefined);
+        setEditReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [postId, section]);
+
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
@@ -274,14 +308,36 @@ export function WorkspaceApp({
     }
   }
 
-  async function onCreateCode() {
+  async function onCreateCode(days: number) {
+    const safe = Math.max(1, Math.min(3650, Math.round(days)));
+    const plan = safe >= 180 ? "yearly" : "monthly";
     setBusy("code");
     try {
-      const { code } = await createRedeemCode({ data: { days: 365, maxUses: 5, note: "控制台生成" } });
-      toast.success(`已生成 ${code}`);
+      const { code } = await createRedeemCode({
+        data: {
+          plan,
+          days: safe,
+          maxUses: 5,
+          note: "控制台生成",
+        },
+      });
+      toast.success(`已生成 ${safe} 天兑换码 ${code}`);
       await refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "无法生成");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function onDeleteCode(id: number) {
+    setBusy(`code-del-${id}`);
+    try {
+      await deleteRedeemCode({ data: { id } });
+      toast.success("已删除兑换码");
+      await refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "无法删除");
     } finally {
       setBusy(null);
     }
@@ -328,6 +384,8 @@ export function WorkspaceApp({
         dash={dash}
         files={files}
         members={members}
+        editPost={editPost}
+        editReady={editReady}
         busy={busy}
         onRefresh={() => void refresh()}
         onStatus={onStatus}
@@ -341,6 +399,7 @@ export function WorkspaceApp({
         onGrant={onGrant}
         onRevoke={onRevoke}
         onCreateCode={onCreateCode}
+        onDeleteCode={onDeleteCode}
         onDeleteComment={onDeleteComment}
       />
     );
@@ -366,6 +425,8 @@ function ConsoleBody({
   dash,
   files,
   members,
+  editPost,
+  editReady,
   busy,
   onRefresh,
   onStatus,
@@ -379,6 +440,7 @@ function ConsoleBody({
   onGrant,
   onRevoke,
   onCreateCode,
+  onDeleteCode,
   onDeleteComment,
 }: {
   area: WorkspaceArea;
@@ -386,6 +448,8 @@ function ConsoleBody({
   dash: AuthorDashboard;
   files: AttachmentItem[];
   members: { subscribers: SubscriberRow[]; codes: RedeemCodeRow[] };
+  editPost?: PostDetail;
+  editReady?: boolean;
   busy: string | null;
   onRefresh: () => void;
   onStatus: (id: number, status: "draft" | "published") => void;
@@ -398,7 +462,8 @@ function ConsoleBody({
   onRole: (userId: string, role: Role) => void;
   onGrant: (userId: string) => void;
   onRevoke: (userId: string) => void;
-  onCreateCode: () => void;
+  onCreateCode: (days: number) => void;
+  onDeleteCode: (id: number) => void;
   onDeleteComment: (id: number) => void;
 }) {
   if (area === "me" && !(ME_SECTIONS as readonly string[]).includes(section)) {
@@ -413,12 +478,29 @@ function ConsoleBody({
     return <ConsoleDashboard area={area} dash={dash} onRefresh={onRefresh} refreshing={busy !== null} />;
   }
 
+  if (section === "write") {
+    if (!editReady) {
+      return (
+        <Panel>
+          <Empty text="正在打开编辑器…" />
+        </Panel>
+      );
+    }
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <WriteForm key={editPost?.id ?? "new"} post={editPost} />
+      </div>
+    );
+  }
+
   if (section === "posts") {
     return (
       <Panel
         extra={
           <Button asChild size="sm">
-            <Link to="/write">写文章</Link>
+            <Link to="/console" search={{ section: "write" }}>
+              写文章
+            </Link>
           </Button>
         }
       >
@@ -430,7 +512,11 @@ function ConsoleBody({
               <li key={post.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="font-medium">
-                    <Link to="/posts/$slug" params={{ slug: post.slug }} className="hover:text-console-brand">
+                    <Link
+                      to="/console"
+                      search={{ section: "write", id: post.id }}
+                      className="hover:text-console-brand"
+                    >
                       {post.title}
                     </Link>
                   </p>
@@ -443,7 +529,7 @@ function ConsoleBody({
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button asChild size="sm" variant="outline">
-                    <Link to="/write/$id" params={{ id: String(post.id) }}>
+                    <Link to="/console" search={{ section: "write", id: post.id }}>
                       编辑
                     </Link>
                   </Button>
@@ -485,9 +571,15 @@ function ConsoleBody({
                 <p className="text-sm">
                   <span className="font-medium">{comment.authorName}</span>
                   <span className="text-console-muted"> 评论了 </span>
-                  <Link to="/posts/$slug" params={{ slug: comment.postSlug }} className="text-console-brand hover:underline">
-                    {comment.postTitle}
-                  </Link>
+                  {area === "console" ? (
+                    <Link to="/console" search={{ section: "write", id: comment.postId }} className="text-console-brand hover:underline">
+                      {comment.postTitle}
+                    </Link>
+                  ) : (
+                    <Link to="/posts/$slug" params={{ slug: comment.postSlug }} className="text-console-brand hover:underline">
+                      {comment.postTitle}
+                    </Link>
+                  )}
                 </p>
                 <p className="mt-2 text-sm leading-relaxed">{comment.body}</p>
                 <div className="mt-2 flex items-center justify-between">
@@ -590,6 +682,22 @@ function ConsoleBody({
           <div className="mt-6">
             <ThemeGallery compact />
           </div>
+          <div className="mt-10">
+            <h2 className="text-sm font-semibold text-console-ink">前台栏目</h2>
+            <div className="mt-3">
+              <PagesPanel />
+            </div>
+          </div>
+        </div>
+      </Panel>
+    );
+  }
+
+  if (section === "links") {
+    return (
+      <Panel>
+        <div className="p-5">
+          <LinksPanel />
         </div>
       </Panel>
     );
@@ -707,7 +815,14 @@ function ConsoleBody({
                   <div>
                     <p className="font-medium">{item.name}</p>
                     <p className="mt-1 text-xs text-console-muted">
-                      {item.plan === "monthly" ? "月卡" : item.plan === "yearly" ? "年卡" : "赠送"} · {item.status === "active" ? "有效" : "已失效"}
+                      {item.plan === "monthly"
+                        ? "月卡"
+                        : item.plan === "monthly_auto"
+                          ? "连续包月"
+                          : item.plan === "yearly"
+                            ? "年卡"
+                            : "赠送"}{" "}
+                      · {item.status === "active" ? "有效" : "已失效"}
                       {item.expiresAt ? ` · 至 ${formatZhDate(item.expiresAt)}` : ""}
                     </p>
                   </div>
@@ -721,27 +836,7 @@ function ConsoleBody({
             </ul>
           )}
         </Panel>
-        <Panel
-          extra={
-            <Button size="sm" variant="outline" disabled={busy === "code"} onClick={onCreateCode}>
-              生成年卡码
-            </Button>
-          }
-        >
-          <div className="px-5 pt-4">
-            <h2 className="text-sm font-semibold">兑换码</h2>
-          </div>
-          <ul className="divide-y divide-console-line">
-            {members.codes.map((item) => (
-              <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                <code className="font-mono text-xs">{item.code}</code>
-                <span className="text-xs text-console-muted">
-                  {item.usedCount}/{item.maxUses} · {item.days} 天
-                </span>
-              </li>
-            ))}
-          </ul>
-        </Panel>
+        <RedeemCodesPanel codes={members.codes} busy={busy} onCreate={onCreateCode} onDelete={onDeleteCode} />
       </div>
     );
   }
@@ -778,8 +873,8 @@ function ConsoleBody({
             <h2 className="text-sm font-semibold">账户</h2>
             <p className="mt-2 text-sm text-console-muted">
               当前身份：{ROLE_LABEL[dash.role]}。
-              {canWriteRole(dash.role)
-                ? "写稿请到控制台。这里只看你的评论、会员和账户。"
+              {dash.role === "admin"
+                ? "站点管理在控制台。这里只看你的评论、会员和账户。"
                 : "注册用户可以评论、开通会员阅读付费文章。"}
             </p>
           </div>
@@ -787,7 +882,7 @@ function ConsoleBody({
             <Button asChild size="sm" variant="outline">
               <Link to="/membership">会员</Link>
             </Button>
-            {canWriteRole(dash.role) ? (
+            {dash.role === "admin" ? (
               <Button asChild size="sm">
                 <Link to="/console">打开控制台</Link>
               </Button>
@@ -839,6 +934,94 @@ function ConsoleBody({
         </div>
       </Panel>
     </div>
+  );
+}
+
+function RedeemCodesPanel({
+  codes,
+  busy,
+  onCreate,
+  onDelete,
+}: {
+  codes: RedeemCodeRow[];
+  busy: string | null;
+  onCreate: (days: number) => void;
+  onDelete: (id: number) => void;
+}) {
+  const [preset, setPreset] = useState<"30" | "365" | "custom">("365");
+  const [customDays, setCustomDays] = useState("90");
+
+  function days() {
+    if (preset === "30") return 30;
+    if (preset === "365") return 365;
+    const n = Number(customDays);
+    return Number.isFinite(n) ? Math.round(n) : 0;
+  }
+
+  function generate() {
+    const value = days();
+    if (value < 1 || value > 3650) {
+      toast.error("天数请填 1 到 3650");
+      return;
+    }
+    onCreate(value);
+  }
+
+  return (
+    <Panel>
+      <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold">兑换码</h2>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-console-muted">有效期</span>
+            <Button size="sm" variant={preset === "30" ? "default" : "outline"} onClick={() => setPreset("30")}>
+              30 天
+            </Button>
+            <Button size="sm" variant={preset === "365" ? "default" : "outline"} onClick={() => setPreset("365")}>
+              365 天
+            </Button>
+            <Button size="sm" variant={preset === "custom" ? "default" : "outline"} onClick={() => setPreset("custom")}>
+              自定义
+            </Button>
+            {preset === "custom" ? (
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  className="h-8 w-24"
+                  value={customDays}
+                  onChange={(event) => setCustomDays(event.target.value)}
+                />
+                <span className="text-xs text-console-muted">天</span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+        <Button size="sm" disabled={busy === "code"} onClick={generate}>
+          {busy === "code" ? "生成中…" : "生成"}
+        </Button>
+      </div>
+      {codes.length === 0 ? (
+        <Empty text="还没有兑换码。默认 30 天或 365 天，也可自定义天数。" />
+      ) : (
+        <ul className="divide-y divide-console-line">
+          {codes.map((item) => (
+            <li key={item.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+              <div className="min-w-0">
+                <code className="font-mono text-xs">{item.code}</code>
+                <p className="mt-1 text-xs text-console-muted">
+                  {item.days === 30 ? "月卡" : item.days === 365 ? "年卡" : "自定义"} · {item.usedCount}/{item.maxUses} · {item.days} 天
+                </p>
+              </div>
+              <Button size="sm" variant="ghost" disabled={busy === `code-del-${item.id}`} onClick={() => onDelete(item.id)}>
+                删除
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
   );
 }
 

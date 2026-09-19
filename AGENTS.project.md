@@ -60,7 +60,7 @@ public/obsidian-folio/   Obsidian 插件（manifest / main.js / styles.css）
 | `obsidian` | PAT、YAML 笔记同步、插件包 |
 | `mcp` | Agent 远程管理：Streamable HTTP JSON-RPC，复用 PAT |
 | `theme` | 内置皮肤（地球 / 极夜 / 墨迹 / 终端 / 稿纸 / 雾面） |
-| `roles` | author / editor / admin。第一人 admin，其余 author |
+| `roles` | 只有 admin / 用户（reader）。第一人 admin，其余用户。管理员才能写稿、进控制台 |
 | `entrance` | 后台入口。Docker 首次启动 `scripts/ensure-init.mjs` 生成路径并打印到终端；空=关；`/$entry` 种 cookie |
 | `backup` | 整站 JSON 快照。`scripts/backup.mjs`；控制台「备份」；CLI `export-db.mjs` / `import-db.mjs` |
 | `storage` | 附件存储。默认 Postgres bytea；可选 S3 兼容对象存储。`scripts/object-storage.mjs`；控制台「存储」 |
@@ -76,7 +76,7 @@ public/obsidian-folio/   Obsidian 插件（manifest / main.js / styles.css）
 Auth **开**。Postgres：有 `DATABASE_URL` 用 Neon，否则 PGLite。
 
 - 登录用户第一人自动 `admin`，其余默认 `reader`（普通用户）。登录页可邮箱注册。Docker 首次启动 `scripts/ensure-admin.mjs` 创建 credential 管理员（可用 `FOLIO_ADMIN_EMAIL` / `FOLIO_ADMIN_PASSWORD` 覆盖）；已有用户则不改密码。
-- 登录用户第一人自动 `admin`，其余默认 `reader`。写稿只给 admin / editor。`/console` 给站长；`/me` 给读者（评论、会员）。不要做用户投稿。
+- 登录用户第一人自动 `admin`，其余默认 `reader`。写稿和控制台只给管理员。`/me` 给用户（评论、会员）。不要做用户投稿。不要引入 author / editor 角色。
 - 文章软删 `deleted_at`，公开查询必须排除。
 - 不要新建 `.env`。不要把密钥写进源码。
 - 不要在公开 server function 里做清空表、批量覆盖。
@@ -122,7 +122,7 @@ Auth **开**。Postgres：有 `DATABASE_URL` 用 Neon，否则 PGLite。
 - 动效用 150–300ms，尊重 `prefers-reduced-motion`。
 - 图标用 `lucide-react`，不要 emoji 当图标。
 - 改外观先看 `design-ui` skill，再动 token，不要给单个页面开第二套视觉。
-- 内置皮肤：`src/lib/theme/catalog.ts` + `src/styles.css` 的 `[data-theme]`。顶栏调色盘、`/themes`、控制台「外观」共用 `ThemeGallery` / `ThemeToggle`。选择存在 `localStorage`（`folio-skin` / `folio-mode`），不要做成账号设置。
+- 内置皮肤：`src/lib/theme/catalog.ts` + `src/styles.css` 的 `[data-theme]`。顶栏调色盘、控制台「外观」共用 `ThemeGallery` / `ThemeToggle`。选择存在 `localStorage`（`folio-skin` / `folio-mode`），不要做成账号设置。
 
 ## Code style
 
@@ -174,7 +174,7 @@ npm run check:auth
 | Obsidian 同步 | `src/lib/obsidian/` + `/api/obsidian/*`（PAT `folio_`）；插件源文件在 `public/obsidian-folio/`，zip 由客户端打包 |
 | Agent MCP | `src/lib/mcp/` + `/api/mcp`（Streamable HTTP，同一 PAT）；说明页 `/mcp`；新工具加在 `catalog.ts` 并在 `ops.ts` 实现 |
 | Docker / Release | `Dockerfile` + `docker-compose.yml`；版本来自 GitHub Release（`v*` tag → GHCR + Release）；升级跑 `scripts/update-from-release.sh` |
-| 后台入口 | `src/lib/entrance/` + `migrations/0008_entrance.sql`；Docker 首次启动 `scripts/ensure-init.mjs` 生成入口并打印到终端；空字符串关闭；`/$entry` 解锁并写 `folio_entrance`；公开页、`/login`、`/me`、`/write`、MCP / Obsidian PAT 不拦。`/console` 仅 editor/admin |
+| 后台入口 | `src/lib/entrance/` + `migrations/0008_entrance.sql`；Docker 首次启动 `scripts/ensure-init.mjs` 生成入口并打印到终端；空字符串关闭；`/$entry` 解锁并写 `folio_entrance`；公开页、`/login`、`/me`、`/write`、MCP / Obsidian PAT 不拦。`/console` 仅管理员 |
 | 站长账户 | `scripts/ensure-admin.mjs`；无用户时创建管理员。公开注册在登录页；新用户默认 reader，用来评论和开会员。写稿只在 `/console`。`migrations/0011_open_signup.sql` 取消单账户限制 |
 | 备份 / 搬家 | `scripts/backup.mjs` + 控制台「备份」；导出 JSON（含附件 bytea）；导入覆盖全站，跳过 session；CLI 同格式 |
 | 新皮肤 | `catalog.ts` 加一项 + `styles.css` 写 light/dark 两套 token；预览色只放 catalog swatch |

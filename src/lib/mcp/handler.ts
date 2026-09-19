@@ -30,7 +30,7 @@ export type HandleOutcome =
   | { kind: "error"; status: number; body: JsonRpcResponse; sessionId: string };
 
 export function newSessionId() {
-  return randomBytes(16).toString("hex");
+  return randomBytes(24).toString("base64url");
 }
 
 export { parseMcpBody };
@@ -124,7 +124,7 @@ function initializeResult(params: Record<string, unknown>) {
       version: MCP_SERVER_VERSION,
     },
     instructions:
-      "折页是技术向中文独立博客。用 list_posts / get_post / search_posts 读取，publish_post 推送带 YAML 头的 Markdown，update_post 局部修改，delete_post 进回收站。栏目必须是：" +
+      "折页是技术向中文独立博客。用 list_posts / get_post / search_posts 读取。写新稿先 draft_post 存草稿（前台不可见），确认后再 publish_post 或 set_post_status 发布。update_post 局部修改，delete_post 进回收站。栏目必须是：" +
       TOPICS.join("、") +
       "。代码围栏写成 ```ts:src/path.ts {3-5}。阅读权限 access: public | early | paid。",
   };
@@ -170,9 +170,9 @@ async function getPrompt(params: Record<string, unknown>, ctx: McpContext) {
               `标题：${title}`,
               `要讲清：${thesis}`,
               `写完整 Markdown，开头带 YAML：`,
-              `title / slug（可用 ${slugHint || "topic-note"}）/ topic / tags / status: published / access: public`,
+              `title / slug（可用 ${slugHint || "topic-note"}）/ topic / tags / status: draft / access: public`,
               `正文用中文，短句，带至少一个语言围栏，格式：\`\`\`ts:src/example.ts`,
-              `写完后调用 publish_post 推送。不要空谈，给可运行的代码。`,
+              `写完后调用 draft_post 存草稿。不要直接发布。不要空谈，给可运行的代码。`,
             ].join("\n"),
           },
         },
@@ -203,7 +203,7 @@ async function getPrompt(params: Record<string, unknown>, ctx: McpContext) {
           text: [
             `按下面的指令改写折页文章 \`${slug}\`。`,
             `指令：${instruction}`,
-            `保持 YAML 头字段，代码围栏仍写语言和文件名。改完调用 update_post 或 publish_post。`,
+            `保持 YAML 头字段，代码围栏仍写语言和文件名。改完若仍是草稿调用 draft_post 或 update_post；要上线再 publish_post。`,
             ``,
             `当前稿件：`,
             markdown,

@@ -9,31 +9,51 @@ export const ACCESS_LABEL: Record<AccessMode, string> = {
 
 export const EXCLUSIVE_DAY_OPTIONS = [3, 7, 14, 30] as const;
 
+export const MONTHLY_PRICE = 29;
+export const YEARLY_PRICE = 199;
+/** 连续包月折扣：8 折。 */
+export const AUTO_RENEW_RATE = 0.8;
+export const AUTO_MONTHLY_PRICE = Math.round(MONTHLY_PRICE * AUTO_RENEW_RATE * 10) / 10;
+
 export const PLANS = [
   {
     id: "monthly" as const,
     label: "月卡",
     days: 30,
-    price: 29,
-    blurb: "立刻阅读抢先文章，期间不限次数。",
+    price: MONTHLY_PRICE,
+    blurb: "买一个月，到期结束。",
+  },
+  {
+    id: "monthly_auto" as const,
+    label: "连续包月",
+    days: 30,
+    price: AUTO_MONTHLY_PRICE,
+    originalPrice: MONTHLY_PRICE,
+    discountLabel: "8折",
+    blurb: "到期自动续费，享 8 折。",
   },
   {
     id: "yearly" as const,
     label: "年卡",
     days: 365,
-    price: 199,
+    price: YEARLY_PRICE,
     blurb: "全年抢先看，相当于每月 16 元。",
   },
-];
+] as const;
 
-export type PlanId = (typeof PLANS)[number]["id"] | "comp";
+export type CheckoutPlanId = (typeof PLANS)[number]["id"];
+export type PlanId = CheckoutPlanId | "comp";
 
 export function isAccessMode(value: string | null | undefined): value is AccessMode {
   return (ACCESS_MODES as readonly string[]).includes(value ?? "");
 }
 
 export function isPlanId(value: string | null | undefined): value is PlanId {
-  return value === "monthly" || value === "yearly" || value === "comp";
+  return value === "monthly" || value === "monthly_auto" || value === "yearly" || value === "comp";
+}
+
+export function formatPlanPrice(price: number) {
+  return Number.isInteger(price) ? String(price) : price.toFixed(1);
 }
 
 export function clampExclusiveDays(value: number | null | undefined) {

@@ -4,7 +4,11 @@ import { userIdFromToken } from "./tokens";
 export async function resolveApiUserId(request: Request): Promise<string | null> {
   const header = request.headers.get("authorization") ?? "";
   const bearer = header.replace(/^Bearer\s+/i, "").trim();
-  if (bearer.startsWith("folio_")) return userIdFromToken(bearer);
+  if (bearer.startsWith("folio_")) {
+    const { isFolioToken } = await import("./token-guard");
+    if (!isFolioToken(bearer)) return null;
+    return userIdFromToken(bearer);
+  }
 
   const { assertSameSiteRequest } = await import("@/lib/auth/isolation.server");
   try {

@@ -5,7 +5,8 @@ import { SiteShell } from "@/components/site-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { listPublishedPosts } from "@/lib/blog/server";
-import { ACCESS_LABEL, PLANS, describeUnlock } from "@/lib/membership/access";
+import { getFrontPages } from "@/lib/pages/server";
+import { ACCESS_LABEL, PLANS, describeUnlock, formatPlanPrice, type CheckoutPlanId } from "@/lib/membership/access";
 import { getMyMembership, redeemCode, startSubscription } from "@/lib/membership/server";
 import { SignInGate } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -17,15 +18,15 @@ export const Route = createFileRoute("/membership")({
     return next ? { next } : {};
   },
   loader: async () => {
-    const [posts, membership] = await Promise.all([listPublishedPosts(), getMyMembership()]);
-    return { posts, membership };
+    const [posts, membership, pages] = await Promise.all([listPublishedPosts(), getMyMembership(), getFrontPages()]);
+    return { posts, membership, pages };
   },
   head: () => ({ meta: [{ title: "会员 - 折页" }] }),
   component: MembershipPage,
 });
 
 function MembershipPage() {
-  const { posts, membership: initial } = Route.useLoaderData();
+  const { posts, membership: initial, pages } = Route.useLoaderData();
   const { next } = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
   const [membership, setMembership] = useState(initial);
@@ -33,7 +34,7 @@ function MembershipPage() {
   const [code, setCode] = useState("");
   const exclusive = posts.filter((post) => post.exclusive);
 
-  async function subscribe(plan: "monthly" | "yearly") {
+  async function subscribe(plan: CheckoutPlanId) {
     setPending(plan);
     try {
       const nextState = await startSubscription({ data: { plan } });
@@ -62,7 +63,7 @@ function MembershipPage() {
   }
 
   return (
-    <SiteShell posts={posts}>
+    <SiteShell posts={posts} pages={pages}>
       <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         <h1 className="text-3xl font-semibold tracking-tight">会员</h1>
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
@@ -84,12 +85,24 @@ function MembershipPage() {
             ) : null}
           </div>
         ) : (
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {PLANS.map((plan) => (
               <article key={plan.id} className="flex flex-col rounded-xl bg-card p-5 shadow-md">
-                <h2 className="text-lg font-semibold">{plan.label}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">{plan.label}</h2>
+                  {"discountLabel" in plan && plan.discountLabel ? (
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      {plan.discountLabel}
+                    </span>
+                  ) : null}
+                </div>
                 <p className="mt-1 text-3xl font-semibold tracking-tight">
-                  ¥{plan.price}
+                  {"originalPrice" in plan && plan.originalPrice ? (
+                    <span className="mr-2 text-base font-normal text-muted-foreground line-through">
+                      ¥{formatPlanPrice(plan.originalPrice)}
+                    </span>
+                  ) : null}
+                  ¥{formatPlanPrice(plan.price)}
                   <span className="ml-1 text-sm font-normal text-muted-foreground">/ {plan.days} 天</span>
                 </p>
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{plan.blurb}</p>
@@ -141,7 +154,7 @@ function MembershipPage() {
               <Input
                 value={code}
                 onChange={(event) => setCode(event.target.value.toUpperCase())}
-                placeholder="FOLIO-TECH"
+                placeholder="输入兑换码"
                 className="font-mono uppercase"
                 maxLength={32}
               />

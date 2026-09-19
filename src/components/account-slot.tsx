@@ -19,6 +19,7 @@ const subscribeToNothing = () => () => {};
 export function AccountSlot({ tone = "header" }: { tone?: "header" | "default" }) {
   const { user, isPending } = useCurrentUserState();
   const [canWrite, setCanWrite] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const gateSession = useSyncExternalStore(
     subscribeToNothing,
     hasGateSessionMarker,
@@ -28,15 +29,20 @@ export function AccountSlot({ tone = "header" }: { tone?: "header" | "default" }
   useEffect(() => {
     if (!user) {
       setCanWrite(false);
+      setIsAdmin(false);
       return;
     }
     let cancelled = false;
     void getWorkspaceAccess()
       .then((access) => {
-        if (!cancelled) setCanWrite(access.canWrite);
+        if (cancelled) return;
+        setCanWrite(access.canWrite);
+        setIsAdmin(access.isAdmin);
       })
       .catch(() => {
-        if (!cancelled) setCanWrite(false);
+        if (cancelled) return;
+        setCanWrite(false);
+        setIsAdmin(false);
       });
     return () => {
       cancelled = true;
@@ -85,15 +91,17 @@ export function AccountSlot({ tone = "header" }: { tone?: "header" | "default" }
         <DropdownMenuItem asChild>
           <Link to="/me">个人中心</Link>
         </DropdownMenuItem>
+        {isAdmin ? (
+          <DropdownMenuItem asChild>
+            <Link to="/console">控制台</Link>
+          </DropdownMenuItem>
+        ) : null}
         {canWrite ? (
-          <>
-            <DropdownMenuItem asChild>
-              <Link to="/console">控制台</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/write">写文章</Link>
-            </DropdownMenuItem>
-          </>
+          <DropdownMenuItem asChild>
+            <Link to="/console" search={{ section: "write" }}>
+              写文章
+            </Link>
+          </DropdownMenuItem>
         ) : null}
         <DropdownMenuItem asChild>
           <Link to="/membership">会员</Link>

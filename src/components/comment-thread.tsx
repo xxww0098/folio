@@ -88,7 +88,7 @@ export function CommentThread({
             <Textarea
               value={body}
               onChange={(event) => setBody(event.target.value)}
-              placeholder={replyTo ? `回复 ${replyTo.authorName}` : "写下你的看法。"}
+              placeholder={replyTo ? `回复 ${replyTo.authorName}` : "写评论"}
               maxLength={1000}
             />
             <div className="flex justify-end">

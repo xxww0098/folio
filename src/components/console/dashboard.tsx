@@ -57,7 +57,7 @@ type QuickItem = {
 const QUICK_CONSOLE: QuickItem[] = [
   { id: "me", label: "个人中心", icon: UserRound, href: "/me" },
   { id: "site", label: "查看站点", icon: AppWindow, href: "/" },
-  { id: "write", label: "创建文章", icon: FileText, href: "/write" },
+  { id: "write", label: "创建文章", icon: FileText, section: "write" },
   { id: "comments", label: "评论管理", icon: MessageSquare, section: "comments" },
   { id: "files", label: "附件上传", icon: Folder, section: "files" },
   { id: "theme", label: "主题管理", icon: Palette, section: "appearance", play: true },
@@ -147,13 +147,6 @@ export function ConsoleDashboard({
                   </Link>
                 );
               }
-              if (item.href === "/write") {
-                return (
-                  <Link key={item.id} to="/write" className={className}>
-                    {inner}
-                  </Link>
-                );
-              }
               if (item.href === "/membership") {
                 return (
                   <Link key={item.id} to="/membership" className={className}>
@@ -208,13 +201,23 @@ export function ConsoleDashboard({
                   <p className="text-sm">
                     <span className="font-medium">{comment.authorName}</span>
                     <span className="text-console-muted"> 评论了 </span>
-                    <Link
-                      to="/posts/$slug"
-                      params={{ slug: comment.postSlug }}
-                      className="text-console-brand hover:underline"
-                    >
-                      {comment.postTitle}
-                    </Link>
+                    {area === "console" ? (
+                      <Link
+                        to="/console"
+                        search={{ section: "write", id: comment.postId }}
+                        className="text-console-brand hover:underline"
+                      >
+                        {comment.postTitle}
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/posts/$slug"
+                        params={{ slug: comment.postSlug }}
+                        className="text-console-brand hover:underline"
+                      >
+                        {comment.postTitle}
+                      </Link>
+                    )}
                   </p>
                   <p className={cn("mt-1 line-clamp-2 text-sm text-console-nav")}>{comment.body}</p>
                   <p className="mt-1 text-xs text-console-muted">{formatRelative(comment.createdAt)}</p>

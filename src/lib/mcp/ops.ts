@@ -66,6 +66,7 @@ export async function callTool(
   ctx: { userId: string; origin: string },
 ): Promise<CallToolResult> {
   const writeTools = new Set([
+    "draft_post",
     "publish_post",
     "update_post",
     "set_post_status",
@@ -86,8 +87,10 @@ export async function callTool(
       return getPost(ctx.userId, ctx.origin, args);
     case "search_posts":
       return searchPosts(ctx.userId, args);
+    case "draft_post":
+      return savePost(ctx.userId, ctx.origin, args, "draft");
     case "publish_post":
-      return publish(ctx.userId, ctx.origin, args);
+      return savePost(ctx.userId, ctx.origin, args, "published");
     case "update_post":
       return update(ctx.userId, ctx.origin, args);
     case "set_post_status":
@@ -218,16 +221,23 @@ async function searchPosts(userId: string, args: Record<string, unknown>) {
   });
 }
 
-async function publish(userId: string, origin: string, args: Record<string, unknown>) {
+async function savePost(
+  userId: string,
+  origin: string,
+  args: Record<string, unknown>,
+  status: "draft" | "published",
+) {
   const markdown = asString(args.markdown) ?? "";
   if (markdown.trim().length < 8) throw new Error("正文太短");
   if (markdown.length > 80000) throw new Error("正文过长");
-  const result = await publishMarkdown(userId, markdown, origin);
+  const result = await publishMarkdown(userId, markdown, origin, { status });
   return jsonResult({
     id: result.id,
     slug: result.slug,
     created: result.created,
+    status: result.status,
     url: result.url,
+    editUrl: `${origin}/console?section=write&id=${result.id}`,
     markdown: result.markdown,
   });
 }
@@ -273,7 +283,9 @@ async function update(userId: string, origin: string, args: Record<string, unkno
   return jsonResult({
     id: result.id,
     slug: result.slug,
+    status,
     url: `${origin}/posts/${result.slug}`,
+    editUrl: `${origin}/console?section=write&id=${result.id}`,
     markdown,
   });
 }

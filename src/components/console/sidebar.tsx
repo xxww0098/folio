@@ -61,7 +61,7 @@ export function ConsoleSidebar({
             {group.label ? <p className="px-3 pb-1.5 text-xs text-console-muted">{group.label}</p> : null}
             <ul className="flex flex-col gap-0.5">
               {group.items.map((item) => {
-                const active = item.section === section;
+                const active = item.section === section || (section === "write" && item.section === "posts");
                 const Icon = item.icon;
                 const className = cn(
                   "console-nav-item flex h-10 w-full items-center gap-3 rounded-lg px-3 text-sm transition-colors duration-150",
@@ -69,10 +69,10 @@ export function ConsoleSidebar({
                     ? "bg-console-active font-medium text-console-ink"
                     : "text-console-nav hover:bg-console-active hover:text-console-ink",
                 );
-                if (item.href) {
+                if (item.href === "/membership") {
                   return (
                     <li key={item.id}>
-                      <Link to={item.href === "/membership" ? "/membership" : "/links"} className={className}>
+                      <Link to="/membership" className={className}>
                         <Icon className="size-4" />
                         {item.label}
                       </Link>

@@ -5,8 +5,15 @@ import { MissingPage } from "@/components/missing-page";
 import { getWorkspaceAccess } from "@/lib/entrance/server";
 
 export const Route = createFileRoute("/console")({
-  validateSearch: (search: Record<string, unknown>): { section?: ConsoleSection } =>
-    isConsoleSection(search.section) ? { section: search.section } : {},
+  validateSearch: (search: Record<string, unknown>): { section?: ConsoleSection; id?: number } => {
+    const section = isConsoleSection(search.section) ? search.section : undefined;
+    const raw = Number(search.id);
+    const id = section === "write" && Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : undefined;
+    return {
+      ...(section ? { section } : {}),
+      ...(id ? { id } : {}),
+    };
+  },
   beforeLoad: async ({ search }) => {
     const access = await getWorkspaceAccess();
     if (!access.unlocked) throw notFound();
@@ -28,6 +35,6 @@ export const Route = createFileRoute("/console")({
 
 function ConsolePage() {
   const data = Route.useLoaderData();
-  const { section = "dashboard" } = Route.useSearch();
-  return <WorkspaceApp area="console" section={section} initial={data} />;
+  const { section = "dashboard", id } = Route.useSearch();
+  return <WorkspaceApp area="console" section={section} postId={id} initial={data} />;
 }
