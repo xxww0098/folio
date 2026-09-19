@@ -189,18 +189,33 @@ function parseBase64Payload(dataBase64: string, fallbackMime: string) {
 
 export const listAttachments = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(async (): Promise<AttachmentItem[]> => {
+  .validator(z.object({ scope: z.enum(["self", "all"]).optional() }).optional())
+  .handler(async ({ context, data }): Promise<AttachmentItem[]> => {
     const sql = await getSql();
+    const actor = await getActor(context.userId);
+    const self = data?.scope === "self" || !actor.canEditAll;
     const rows = await sql.query<AttachmentRow>(
-      `select id, user_id, filename, mime_type, size_bytes, url, alt, group_name, created_at,
-              (data is not null or object_key is not null) as stored,
-              case
-                when object_key is not null then 's3'
-                when data is not null then 'pg'
-                else 'file'
-              end as backend
-       from attachments
-       order by created_at desc`,
+      self
+        ? `select id, user_id, filename, mime_type, size_bytes, url, alt, group_name, created_at,
+                (data is not null or object_key is not null) as stored,
+                case
+                  when object_key is not null then 's3'
+                  when data is not null then 'pg'
+                  else 'file'
+                end as backend
+         from attachments
+         where user_id = $1
+         order by created_at desc`
+        : `select id, user_id, filename, mime_type, size_bytes, url, alt, group_name, created_at,
+                (data is not null or object_key is not null) as stored,
+                case
+                  when object_key is not null then 's3'
+                  when data is not null then 'pg'
+                  else 'file'
+                end as backend
+         from attachments
+         order by created_at desc`,
+      self ? [context.userId] : [],
     );
     return rows.map(toItem);
   });

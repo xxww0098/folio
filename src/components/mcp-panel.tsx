@@ -168,7 +168,7 @@ export function McpPanel({ showTokens = true }: { showTokens?: boolean }) {
       ) : (
         <p className="text-sm text-muted-foreground">
           登录后到{" "}
-          <Link to="/console" className="text-primary hover:underline">
+          <Link to="/console" search={{ section: "agent" }} className="text-primary hover:underline">
             控制台 · Agent
           </Link>{" "}
           签发令牌。

@@ -1,9 +1,9 @@
 {
   "name": "folio",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": false,
   "license": "MIT",
-  "description": "折页 Folio — 技术向中文独立博客",
+  "description": "\u6298\u9875 Folio \u2014 \u6280\u672f\u5411\u4e2d\u6587\u72ec\u7acb\u535a\u5ba2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/xxww0098/folio.git"
@@ -35,7 +35,7 @@
     "preview:stop": "node scripts/preview.mjs stop",
     "typecheck": "tsc --noEmit",
     "check:auth": "node scripts/check-auth-invariant.mjs",
-    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/theme/catalog.test.ts src/lib/blog/wikilink.test.ts src/lib/mcp/handler.test.ts src/lib/release.test.ts src/lib/entrance/core.test.ts",
+    "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/theme/catalog.test.ts src/lib/blog/wikilink.test.ts src/lib/mcp/handler.test.ts src/lib/release.test.ts src/lib/entrance/core.test.ts src/lib/workspace.test.ts",
     "lint": "eslint .",
     "format": "prettier --write ."
   },

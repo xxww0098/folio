@@ -58,16 +58,16 @@ test("non-.sql entries are dropped (readdir also yields the auth/ directory)", (
 
 test("the auth schema ships outside the globbed directory", () => {
   const migrationsDir = join(projectRoot(), "migrations");
-  const entries = readdirSync(migrationsDir);
-  assert.ok(entries.includes("auth"));
-  const pending = pendingMigrations(entries, []);
+  assert.ok(readdirSync(join(migrationsDir, "auth")).includes("0001_auth.sql"));
   assert.equal(
-    pending.some((item) => item.name === "auth" || item.path === "auth"),
+    pendingMigrations(readdirSync(migrationsDir), []).some((item) => item.path === "auth/0001_auth.sql"),
     false,
   );
-  assert.ok(pending.some((item) => item.name === "0001_auth.sql"));
-  assert.ok(pending.some((item) => item.name === "0009_single_user.sql"));
-  assert.ok(readdirSync(join(migrationsDir, "auth")).includes("0001_auth.sql"));
+});
+
+test("open signup drops the single-user lock", () => {
+  const text = readFileSync(join(projectRoot(), "migrations/0011_open_signup.sql"), "utf8");
+  assert.match(text, /drop index if exists folio_single_user/i);
 });
 
 test("this workspace's auth schema copy is byte-identical to its source", () => {

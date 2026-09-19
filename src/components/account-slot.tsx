@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { signOut } from "@/lib/auth/client";
 import { hasGateSessionMarker } from "@/lib/auth/gate-session-marker";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { getWorkspaceAccess } from "@/lib/entrance/server";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -17,11 +18,30 @@ const subscribeToNothing = () => () => {};
 
 export function AccountSlot({ tone = "header" }: { tone?: "header" | "default" }) {
   const { user, isPending } = useCurrentUserState();
+  const [canWrite, setCanWrite] = useState(false);
   const gateSession = useSyncExternalStore(
     subscribeToNothing,
     hasGateSessionMarker,
     () => false,
   );
+
+  useEffect(() => {
+    if (!user) {
+      setCanWrite(false);
+      return;
+    }
+    let cancelled = false;
+    void getWorkspaceAccess()
+      .then((access) => {
+        if (!cancelled) setCanWrite(access.canWrite);
+      })
+      .catch(() => {
+        if (!cancelled) setCanWrite(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   if (isPending) {
     return <Skeleton className={tone === "header" ? "size-9 rounded-full bg-header-foreground/15" : "size-9 rounded-full"} />;
@@ -63,13 +83,20 @@ export function AccountSlot({ tone = "header" }: { tone?: "header" | "default" }
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem asChild>
-          <Link to="/console">控制台</Link>
+          <Link to="/me">个人中心</Link>
         </DropdownMenuItem>
+        {canWrite ? (
+          <>
+            <DropdownMenuItem asChild>
+              <Link to="/console">控制台</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/write">写文章</Link>
+            </DropdownMenuItem>
+          </>
+        ) : null}
         <DropdownMenuItem asChild>
           <Link to="/membership">会员</Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link to="/write">写文章</Link>
         </DropdownMenuItem>
         {!gateSession ? (
           <>

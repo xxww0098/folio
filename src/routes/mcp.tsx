@@ -23,7 +23,9 @@ function McpGuidePage() {
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Button asChild>
-            <Link to="/console">签发令牌</Link>
+            <Link to="/console" search={{ section: "agent" }}>
+              签发令牌
+            </Link>
           </Button>
           <Button asChild variant="outline">
             <Link to="/obsidian">Obsidian</Link>

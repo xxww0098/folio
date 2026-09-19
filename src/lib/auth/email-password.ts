@@ -1,12 +1,10 @@
 /**
- * Local email/password sign-in (this app's Better Auth DB — not the broker).
+ * Local email/password (this app's Better Auth DB — not the broker).
  *
- * Off unless `VITE_FOLIO_EMAIL_PASSWORD=true` at build time (Docker / self-host).
- * Live preview keeps the default off and uses the existing federated buttons.
- *
- * Self-host is a single owner account: Docker first boot creates it
- * (`scripts/ensure-admin.mjs`). The login page is sign-in only — no public signup.
+ * On unless `VITE_FOLIO_EMAIL_PASSWORD=false` at build time. Self-host images
+ * set it to true; live preview leaves it unset, which also keeps the form on
+ * so visitors can register.
  *
  * Do NOT edit `server.ts` for this — that file is frozen pre-wired config.
  */
-export const emailAndPasswordEnabled = import.meta.env.VITE_FOLIO_EMAIL_PASSWORD === "true";
+export const emailAndPasswordEnabled = import.meta.env.VITE_FOLIO_EMAIL_PASSWORD !== "false";

@@ -69,7 +69,7 @@ export function CommentThread({
         <SignInGate
           fallback={
             <p className="mb-10 rounded-lg bg-secondary px-4 py-5 text-sm leading-relaxed text-muted-foreground">
-              登录后可以发表评论。
+              登录或注册后可以发表评论。
               <Link to="/login" className="ml-2 text-foreground underline underline-offset-4">
                 前往登录
               </Link>
