@@ -15,15 +15,14 @@ function AboutPage() {
       <article className="overflow-hidden rounded-xl bg-card p-6 shadow-md sm:p-8">
         <h1 className="text-2xl font-semibold tracking-tight">关于折页</h1>
         <p className="mt-6 text-base leading-relaxed text-foreground/90">
-          写给工程师的独立博客。栏目按语言分，正文带可运行的代码。登录后可写稿、评论、发瞬间；Obsidian
-          与写作 Agent 用同一类令牌推送。
+          写给工程师的独立博客。栏目按语言分，正文带可运行的代码。登录后可评论、开通会员阅读付费文章。
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
-            to="/write"
+            to="/membership"
             className="inline-flex h-11 items-center rounded-md bg-primary px-4 text-sm text-primary-foreground transition-transform duration-150 ease-out active:scale-[0.96]"
           >
-            投稿
+            会员
           </Link>
           <a
             href="https://github.com/xxww0098/folio"

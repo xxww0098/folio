@@ -7,10 +7,14 @@ import { getWorkspaceAccess } from "@/lib/entrance/server";
 export const Route = createFileRoute("/console")({
   validateSearch: (search: Record<string, unknown>): { section?: ConsoleSection } =>
     isConsoleSection(search.section) ? { section: search.section } : {},
-  beforeLoad: async () => {
+  beforeLoad: async ({ search }) => {
     const access = await getWorkspaceAccess();
     if (!access.unlocked) throw notFound();
-    if (access.signedIn && !access.canWrite) {
+    if (!access.signedIn) {
+      const next = search.section ? `/console?section=${search.section}` : "/console";
+      throw redirect({ to: "/login", search: { next } });
+    }
+    if (!access.canWrite) {
       throw redirect({ to: "/me" });
     }
   },

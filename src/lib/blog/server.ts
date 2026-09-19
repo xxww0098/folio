@@ -383,7 +383,7 @@ export const createPost = createServerFn({ method: "POST" })
   .handler(async ({ context, data }): Promise<{ slug: string }> => {
     if (!isTopic(data.topic)) throw new Error("未知栏目");
     const actor = await getActor(context.userId);
-    if (!actor.canWrite) throw new Error("没有投稿权限");
+    if (!actor.canWrite) throw new Error("没有权限");
     const sql = await getSql();
     const authorName = await displayNameFor(sql, context.userId, "作者");
     const slug = makeSlug(data.title);
@@ -638,7 +638,7 @@ export async function upsertPostBySlug(input: UpsertPostInput): Promise<{ id: nu
   if (body.length < 8) throw new Error("正文太短");
   const sql = await getSql();
   const actor = await getActor(input.userId);
-  if (!actor.canWrite) throw new Error("没有投稿权限");
+  if (!actor.canWrite) throw new Error("没有权限");
   const authorName = await displayNameFor(sql, input.userId, "作者");
   let slug = makeStableSlug(title, input.slug);
   const found = await sql.query<{ id: number; user_id: string; deleted_at: string | null; published_at: string | null }>(

@@ -22,7 +22,7 @@
 - MCP：写作 Agent 远程列稿、改稿、推送（`/api/mcp`，同一类 `folio_` 令牌）
 - 六套内置主题，顶栏切换
 - 后台入口：控制台可设一段秘密路径；开启后直接打开 `/console` 显示成普通 404
-- 公开注册：登录页可注册；新用户默认普通用户。首次启动仍会创建管理员
+- 公开注册：登录页可注册；新用户用来评论和开会员。首次启动仍会创建管理员
 - 备份：控制台导出 / 导入整站 JSON，方便换机器
 - 存储：图片默认写进 Postgres；控制台可改成 S3 兼容对象存储（R2 / MinIO / OSS）
 
@@ -67,7 +67,7 @@ docker compose logs folio
 [folio] ------------------------------------------------------------
 ```
 
-打开那条入口地址才能进控制台；直接访问 `/console` 会显示普通 404。登录页可以注册新账号，新用户默认是普通用户。之后重启只再打印入口和邮箱，不再打印密码。
+打开那条入口地址才能进控制台；直接访问 `/console` 会显示普通 404。登录页可以注册新账号，用来评论和开通会员。之后重启只再打印入口和邮箱，不再打印密码。
 
 生产请把站点放在 HTTPS 反向代理后面。会话 Cookie 用 `__Host-` 前缀：本机 `localhost` 可以用 HTTP，公网必须 HTTPS。
 
@@ -122,8 +122,8 @@ docker compose exec -T folio node scripts/import-db.mjs < folio.json
 脚本会把 `.env` 里的 `FOLIO_VERSION` 写成最新 tag，再 `docker compose pull && up`。指定版本：
 
 ```sh
-FOLIO_VERSION=v0.1.4 docker compose pull folio
-FOLIO_VERSION=v0.1.4 docker compose up -d
+FOLIO_VERSION=v0.1.5 docker compose pull folio
+FOLIO_VERSION=v0.1.5 docker compose up -d
 ```
 
 控制台页会显示当前版本；GitHub 上有更新时会提示跑上面的脚本。
@@ -144,8 +144,8 @@ docker compose up -d
 ### 3. 发布新版本（维护者）
 
 ```sh
-git tag v0.1.4
-git push origin v0.1.4
+git tag v0.1.5
+git push origin v0.1.5
 ```
 
 推送 `v*` 标签后，GitHub Actions 会：构建 `amd64` / `arm64` 镜像 → 推送到 GHCR → 创建 GitHub Release。

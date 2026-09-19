@@ -8,5 +8,8 @@ export function getRouter() {
     routeTree,
     defaultErrorComponent: AppErrorComponent,
     defaultNotFoundComponent: MissingPage,
+    defaultPreload: "intent",
+    defaultStaleTime: 30_000,
+    scrollRestoration: true,
   });
 }

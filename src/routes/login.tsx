@@ -13,14 +13,14 @@ import { FolioMark } from "@/components/folio-mark";
 import { listPublishedPosts } from "@/lib/blog/server";
 import { getWorkspaceAccess } from "@/lib/entrance/server";
 import { claimAccount, type Role } from "@/lib/roles";
-import { homeForRole, isStaffRole } from "@/lib/workspace";
+import { homeForRole, canWriteRole } from "@/lib/workspace";
 
 function safeNext(value: unknown) {
   return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") ? value : undefined;
 }
 
 function continuePath(next: string, role: Role | null | undefined, registering: boolean) {
-  if (next === "/console" && !isStaffRole(role)) return "/me";
+  if ((next.startsWith("/console") || next.startsWith("/write")) && !canWriteRole(role)) return "/me";
   if (next && next !== "/") return next;
   if (registering) return "/me";
   return homeForRole(role);
@@ -67,7 +67,7 @@ function Login() {
           </div>
           <h1 className="text-2xl font-semibold">{registering ? "注册" : "登录"}</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            {registering ? "注册后可评论、开会员。新账号是普通用户，投稿需管理员开通作者。" : "欢迎回来。没有账号就先注册。"}
+            {registering ? "注册后可评论、开通会员阅读付费文章。" : "欢迎回来。没有账号就先注册。"}
           </p>
           <div className="mt-6">
             <SignInGate
