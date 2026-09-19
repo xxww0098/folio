@@ -7,5 +7,5 @@ export const Route = createFileRoute("/obsidian")({
     await requireWriterAccess("/console?section=obsidian");
     throw redirect({ to: "/console", search: { section: "obsidian" } });
   },
-  notFoundComponent: MissingPage,
+  notFoundComponent: () => <MissingPage />,
 });

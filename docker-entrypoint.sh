@@ -4,7 +4,7 @@ cd /app
 
 echo "[folio] applying migrations…"
 i=0
-until node scripts/migrate.mjs; do
+until bun scripts/migrate.mjs; do
   i=$((i + 1))
   if [ "$i" -ge 12 ]; then
     echo "[folio] migrate failed after ${i} attempts" >&2
@@ -15,7 +15,7 @@ until node scripts/migrate.mjs; do
 done
 
 echo "[folio] initializing host…"
-node scripts/ensure-init.mjs
+bun scripts/ensure-init.mjs
 
 PORT="${PORT:-8080}"
 HOST="${HOST:-0.0.0.0}"
@@ -24,7 +24,7 @@ echo "[folio] listening on ${HOST}:${PORT} (version ${VITE_FOLIO_VERSION:-unknow
 # srvx resolves --static relative to the --entry file unless --dir is set.
 # Passing a cwd-relative static path without --dir 404s every /assets/* file
 # and the UI renders as unstyled HTML (default blue links, no layout).
-exec npx --no-install srvx serve --prod \
+exec ./node_modules/.bin/srvx serve --prod \
   --host "$HOST" \
   --port "$PORT" \
   --dir "$PWD" \

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { CodeBlock } from "@/components/code-block";
+import { VideoEmbed } from "@/components/video-embed";
+import { ZoomImage } from "@/components/zoom-image";
 import { parseFence } from "./highlight";
 import {
   extractHeadings,
@@ -11,6 +13,7 @@ import {
   wikiDisplay,
   type WikiCatalogItem,
 } from "./wikilink";
+import { videoFromBlock } from "./video-embed";
 import { cn } from "@/lib/utils";
 
 export type TocItem = { id: string; text: string; level: 2 | 3 };
@@ -74,7 +77,7 @@ function wikiNode(rawInner: string, key: string, catalog: WikiCatalogItem[], loc
 
 function inline(text: string, keyPrefix: string, catalog: WikiCatalogItem[], localHeadings: WikiCatalogItem["headings"]): ReactNode[] {
   const nodes: ReactNode[] = [];
-  const pattern = /(`[^`]+`|\[\[[^\[\]]+\]\]|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
+  const pattern = /(`[^`]+`|!\[[^\]]*\]\([^)]+\)|\[\[[^\[\]]+\]\]|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
   let last = 0;
   let match: RegExpExecArray | null;
   let i = 0;
@@ -92,6 +95,21 @@ function inline(text: string, keyPrefix: string, catalog: WikiCatalogItem[], loc
           {token.slice(1, -1)}
         </code>,
       );
+    } else if (token.startsWith("![")) {
+      const md = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(token);
+      const src = md ? safeHref(md[2]) : null;
+      if (md && src) {
+        nodes.push(
+          <img
+            key={`${keyPrefix}-im-${i}`}
+            src={src}
+            alt={md[1]}
+            className="folio-photo my-3 max-h-[32rem] w-full rounded-lg object-contain"
+          />,
+        );
+      } else {
+        nodes.push(token);
+      }
     } else if (token.startsWith("[[")) {
       nodes.push(wikiNode(token.slice(2, -2), `${keyPrefix}-w-${i}`, catalog, localHeadings));
     } else if (token.startsWith("**")) {
@@ -224,13 +242,29 @@ export function ArticleBody({ source, catalog = [] }: { source: string; catalog?
 
     const image = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(block);
     if (image) {
+      const video = videoFromBlock(block);
+      if (video) {
+        elements.push(<VideoEmbed key={`vid-${index}`} info={video} />);
+        return;
+      }
       const src = safeHref(image[2]);
       if (src) {
         elements.push(
-          <img key={`img-${index}`} src={src} alt={image[1]} className="folio-photo my-6 w-full rounded-lg" />,
+          <ZoomImage
+            key={`img-${index}`}
+            src={src}
+            alt={image[1]}
+            className="folio-photo my-6 w-full rounded-lg object-contain"
+          />,
         );
         return;
       }
+    }
+
+    const video = videoFromBlock(block);
+    if (video) {
+      elements.push(<VideoEmbed key={`vid-${index}`} info={video} />);
+      return;
     }
 
     if (block.startsWith("> ")) {

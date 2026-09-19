@@ -112,6 +112,9 @@ describe("keys", () => {
     assert.equal(publicObjectUrl("https://cdn.example.com/", "folio/a.jpg"), "https://cdn.example.com/folio/a.jpg");
     assert.equal(attachmentIdFromSrc("/api/files/12"), 12);
     assert.equal(attachmentIdFromSrc("https://blog.example.com/api/files/12"), 12);
+    assert.equal(attachmentIdFromSrc("/api/files/12/封面.png"), 12);
+    assert.equal(attachmentIdFromSrc("https://cdn.example.com/folio/attachments/12/a.png"), 12);
+    assert.equal(attachmentIdFromSrc("http://minio:9000/folio/folio/attachments/3/a.png"), 3);
     assert.equal(attachmentIdFromSrc("/covers/01-ts.jpg"), null);
     assert.equal(
       publicObjectUrlFromConfig(

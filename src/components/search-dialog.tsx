@@ -1,13 +1,24 @@
 import { Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { PostListItem } from "@/lib/blog/types";
+import { searchPublishedPosts } from "@/lib/blog/server";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 export function SearchDialog({ posts }: { posts: PostListItem[] }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [hits, setHits] = useState(posts);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -23,13 +34,23 @@ export function SearchDialog({ posts }: { posts: PostListItem[] }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return posts.slice(0, 8);
-    return posts
-      .filter((post) => `${post.title}${post.excerpt}${post.topic}`.toLowerCase().includes(q))
-      .slice(0, 8);
-  }, [posts, query]);
+  useEffect(() => {
+    if (!open) return;
+    const q = query.trim();
+    if (!q) {
+      setHits(posts);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    const timer = window.setTimeout(() => {
+      void searchPublishedPosts({ data: q })
+        .then((found) => setHits(found))
+        .catch(() => setHits(posts.filter((post) => `${post.title} ${post.topic} ${post.excerpt}`.includes(q))))
+        .finally(() => setSearching(false));
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [open, query, posts]);
 
   return (
     <Dialog
@@ -40,44 +61,34 @@ export function SearchDialog({ posts }: { posts: PostListItem[] }) {
       }}
     >
       <DialogTrigger asChild>
-        <button
+        <Button
           type="button"
-          className="grid size-11 place-items-center rounded-md text-header-foreground/80 transition-colors duration-150 hover:bg-header-foreground/10 hover:text-header-foreground"
+          variant="ghost"
+          size="icon"
           aria-label="搜索文章"
+          className="text-header-foreground/80 hover:bg-header-foreground/10 hover:text-header-foreground"
         >
           <Search className="size-5" />
-        </button>
+        </Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogTitle>搜索</DialogTitle>
-        <Input
-          autoFocus
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="搜索文章"
-          className="mt-3"
-        />
-        <ul className="mt-3 max-h-80 overflow-y-auto">
-          {results.length === 0 ? (
-            <li className="px-1 py-6 text-center text-sm text-muted-foreground">没有匹配的文章</li>
-          ) : (
-            results.map((post) => (
-              <li key={post.id}>
-                <Link
-                  to="/posts/$slug"
-                  params={{ slug: post.slug }}
-                  onClick={() => setOpen(false)}
-                  className="block rounded-lg px-3 py-3 hover:bg-secondary"
-                >
-                  <p className="text-sm font-medium">{post.title}</p>
-                  <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
-                    {post.topic} · {post.excerpt}
-                  </p>
-                </Link>
-              </li>
-            ))
-          )}
-        </ul>
+      <DialogContent className="top-3 w-[calc(100%-1.5rem)] max-h-[min(70dvh,32rem)] overflow-hidden p-0 [&>button]:hidden sm:top-[12%] sm:w-[min(100%-2rem,36rem)]">
+        <DialogTitle className="sr-only">搜索</DialogTitle>
+        <Command shouldFilter={false}>
+          <CommandInput placeholder="搜索标题、正文、标签" value={query} onValueChange={setQuery} />
+          <CommandList>
+            <CommandEmpty>{searching ? "正在查找…" : "没有匹配的文章"}</CommandEmpty>
+            <CommandGroup heading="文章">
+              {hits.map((post) => (
+                <CommandItem key={post.id} value={`${post.id} ${post.title}`} asChild>
+                  <Link to="/posts/$slug" params={{ slug: post.slug }} onClick={() => setOpen(false)}>
+                    <span className="min-w-0 flex-1 truncate">{post.title}</span>
+                    <span className="shrink-0 font-mono text-xs text-muted-foreground">{post.topic}</span>
+                  </Link>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
       </DialogContent>
     </Dialog>
   );

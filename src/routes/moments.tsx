@@ -7,7 +7,9 @@ import { getSiteChrome } from "@/lib/blog/server";
 import { formatRelative } from "@/lib/format";
 import { createMoment, deleteMoment, listMoments } from "@/lib/moments/server";
 import { requirePublicPage } from "@/lib/pages/server";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { SiteShell, siteChromeProps } from "@/components/site-shell";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -60,47 +62,62 @@ function MomentsPage() {
 
       <SignInGate
         fallback={
-          <p className="mt-6 rounded-xl bg-card px-4 py-5 text-sm text-muted-foreground shadow-md">
-            登录后可以发布瞬间。
-          </p>
+          <Alert variant="muted" className="mt-6">
+            <AlertDescription>登录后可以发布瞬间。</AlertDescription>
+          </Alert>
         }
       >
-        <form onSubmit={onSubmit} className="mt-6 space-y-3 rounded-xl bg-card p-4 shadow-md">
-          <Textarea
-            value={body}
-            onChange={(event) => setBody(event.target.value)}
-            placeholder="写一句这一刻"
-            maxLength={280}
-            className="min-h-24"
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-xs tabular-nums text-muted-foreground">{body.length} / 280</span>
-            <Button type="submit" size="sm" disabled={pending || body.trim().length < 2}>
-              {pending ? "发布中…" : "发布"}
-            </Button>
-          </div>
-        </form>
+        <Card className="mt-6 shadow-md">
+          <CardContent className="p-4">
+            <form onSubmit={onSubmit} className="space-y-3">
+              <Textarea
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                placeholder="写一句这一刻"
+                maxLength={280}
+                className="min-h-24"
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-xs tabular-nums text-muted-foreground">{body.length} / 280</span>
+                <Button type="submit" size="sm" disabled={pending || body.trim().length < 2}>
+                  {pending ? "发布中…" : "发布"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </SignInGate>
 
+      {items.length === 0 ? (
+        <Alert variant="muted" className="mt-6">
+          <AlertDescription>还没有瞬间。</AlertDescription>
+        </Alert>
+      ) : null}
       <ol className="mt-6 space-y-4">
         {items.map((moment) => (
-          <li key={moment.id} className="rounded-xl bg-card p-5 shadow-md">
-            <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold">{moment.authorName}</p>
-              <div className="flex items-center gap-3">
-                <time className="text-xs text-muted-foreground">{formatRelative(moment.createdAt)}</time>
-                {user?.id === moment.userId ? (
-                  <button
-                    type="button"
-                    className="text-xs text-muted-foreground hover:text-destructive"
-                    onClick={() => void onDelete(moment.id)}
-                  >
-                    删除
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            <p className="whitespace-pre-wrap text-base leading-relaxed">{moment.body}</p>
+          <li key={moment.id}>
+            <Card className="shadow-md">
+              <CardContent className="p-5">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-sm font-semibold">{moment.authorName}</p>
+                  <div className="flex items-center gap-3">
+                    <time className="text-xs text-muted-foreground">{formatRelative(moment.createdAt)}</time>
+                    {user?.id === moment.userId ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-0 text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => void onDelete(moment.id)}
+                      >
+                        删除
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+                <p className="whitespace-pre-wrap text-base leading-relaxed">{moment.body}</p>
+              </CardContent>
+            </Card>
           </li>
         ))}
       </ol>

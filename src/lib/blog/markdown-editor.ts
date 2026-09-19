@@ -1,9 +1,12 @@
 import { Extension, InputRule } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { markdownToHtml } from "./html";
+import { videoFromBlock } from "./video-embed";
 import { parseWikiInner, resolveWikiTarget, wikiDisplay, type WikiCatalogItem } from "./wikilink";
+import { findOpenWikiQuery } from "./wiki-suggest";
 
 function looksLikeMarkdown(text: string) {
+  if (videoFromBlock(text.trim())) return true;
   return /```|^\s{0,3}#{1,3}\s|^\s*[-*+]\s|^\s*\d+\.\s|^\s*>\s|\*\*[^*]+\*\*|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|^---$|\[\[[^\]]+\]\]/m.test(
     text,
   );
@@ -24,7 +27,12 @@ function wikiHref(inner: string, catalog: WikiCatalogItem[]) {
   return "#";
 }
 
-export function markdownEditorExtension(catalogRef: { current: WikiCatalogItem[] }) {
+export type WikiTrigger = { from: number; to: number; query: string };
+
+export function markdownEditorExtension(
+  catalogRef: { current: WikiCatalogItem[] },
+  onTrigger?: { current: (trigger: WikiTrigger | null) => void },
+) {
   return Extension.create({
     name: "markdownEase",
     addInputRules() {
@@ -75,6 +83,34 @@ export function markdownEditorExtension(catalogRef: { current: WikiCatalogItem[]
               editor.commands.insertContent(markdownToHtml(text));
               return true;
             },
+          },
+        }),
+        new Plugin({
+          key: new PluginKey("wikiSuggest"),
+          view() {
+            return {
+              update(view) {
+                if (!onTrigger) return;
+                const { from } = view.state.selection;
+                if (!view.state.selection.empty) {
+                  onTrigger.current(null);
+                  return;
+                }
+                const $from = view.state.doc.resolve(from);
+                const start = Math.max(0, $from.parentOffset - 80);
+                const text = $from.parent.textBetween(start, $from.parentOffset, undefined, "\ufffc");
+                const open = findOpenWikiQuery(text);
+                if (!open) {
+                  onTrigger.current(null);
+                  return;
+                }
+                onTrigger.current({
+                  from: from - open.query.length - 2,
+                  to: from,
+                  query: open.query,
+                });
+              },
+            };
           },
         }),
       ];

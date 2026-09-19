@@ -4,6 +4,8 @@ import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/lib/auth/use-current-user";
 import { toggleLike } from "@/lib/likes/server";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export function LikeButton({
@@ -22,14 +24,17 @@ export function LikeButton({
 
   if (!user) {
     return (
-      <Link
-        to="/login"
-        className="inline-flex h-11 items-center gap-1.5 text-sm text-muted-foreground hover:text-primary"
-        aria-label="登录后点赞"
-      >
-        <Heart className="size-4" />
-        <span className="tabular-nums">{count}</span>
-      </Link>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button asChild variant="ghost" className="h-11 gap-1.5 text-muted-foreground">
+            <Link to="/login" aria-label="登录后点赞">
+              <Heart className="size-4" />
+              <span className="tabular-nums">{count}</span>
+            </Link>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>登录后点赞</TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -53,22 +58,25 @@ export function LikeButton({
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => void onToggle()}
-      disabled={pending}
-      className={cn(
-        "inline-flex h-11 items-center gap-1.5 text-sm",
-        liked ? "text-primary" : "text-muted-foreground hover:text-primary",
-      )}
-      aria-pressed={liked}
-      aria-label={liked ? "取消点赞" : "点赞"}
-    >
-      <Heart
-        className={cn("folio-heart size-4", liked && "fill-current")}
-        data-liked={liked ? "true" : undefined}
-      />
-      <span className="tabular-nums">{count}</span>
-    </button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => void onToggle()}
+          disabled={pending}
+          className={cn("h-11 gap-1.5", liked ? "text-primary" : "text-muted-foreground")}
+          aria-pressed={liked}
+          aria-label={liked ? "取消点赞" : "点赞"}
+        >
+          <Heart
+            className={cn("folio-heart size-4", liked && "fill-current")}
+            data-liked={liked ? "true" : undefined}
+          />
+          <span className="tabular-nums">{count}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{liked ? "取消点赞" : "点赞"}</TooltipContent>
+    </Tooltip>
   );
 }

@@ -6,13 +6,14 @@ import type { WorkspaceArea } from "@/lib/workspace";
 import { workspacePath } from "@/lib/workspace";
 import { FolioMark } from "@/components/folio-mark";
 import { navFor, type ConsoleSection } from "./nav";
+import { VisitSiteLink } from "./visit-site";
 
 export function ConsoleBrand({ area }: { area: WorkspaceArea }) {
   const home = workspacePath(area);
   return (
     <Link to={home} search={{ section: "dashboard" }} className="flex items-center gap-2 px-1">
-      <span className="grid size-8 place-items-center rounded-lg bg-console-brand text-console-sidebar">
-        <FolioMark className="size-5" />
+      <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-console-brand text-console-sidebar">
+        <FolioMark className="size-4" />
       </span>
       <span className="flex flex-col leading-none">
         <span className="font-sans text-2xl font-bold tracking-tight text-console-brand">Folio</span>
@@ -98,41 +99,37 @@ export function ConsoleSidebar({
         ))}
       </nav>
 
-      <div className="mt-auto flex items-center gap-2 border-t border-console-line px-4 py-4">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-console-ink">{userName}</p>
-          {role ? (
-            <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-console-active px-1.5 py-0.5 text-xs text-console-nav">
-              <Shield className="size-3" />
-              {role === "admin" ? "超级管理员" : ROLE_LABEL[role]}
-            </span>
+      <div className="mt-auto border-t border-console-line px-4 py-4">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-console-ink">{userName}</p>
+            {role ? (
+              <span className="mt-1 inline-flex items-center gap-1 rounded-md bg-console-active px-1.5 py-0.5 text-xs text-console-nav">
+                <Shield className="size-3" />
+                {role === "admin" ? "超级管理员" : ROLE_LABEL[role]}
+              </span>
+            ) : null}
+          </div>
+          {area === "console" ? (
+            <Link
+              to="/me"
+              aria-label="个人中心"
+              title="个人中心"
+              className="grid size-9 place-items-center rounded-full text-console-nav hover:bg-console-active"
+            >
+              <UserRound className="size-4" />
+            </Link>
           ) : null}
+          <button
+            type="button"
+            aria-label="刷新"
+            onClick={onRefresh}
+            className="grid size-9 place-items-center rounded-full text-console-nav hover:bg-console-active"
+          >
+            <RefreshCw className="size-4" />
+          </button>
         </div>
-        {area === "console" ? (
-          <Link
-            to="/me"
-            aria-label="个人中心"
-            className="grid size-9 place-items-center rounded-full text-console-nav hover:bg-console-active"
-          >
-            <UserRound className="size-4" />
-          </Link>
-        ) : (
-          <Link
-            to="/"
-            aria-label="查看站点"
-            className="grid size-9 place-items-center rounded-full text-console-nav hover:bg-console-active"
-          >
-            <UserRound className="size-4" />
-          </Link>
-        )}
-        <button
-          type="button"
-          aria-label="刷新"
-          onClick={onRefresh}
-          className="grid size-9 place-items-center rounded-full text-console-nav hover:bg-console-active"
-        >
-          <RefreshCw className="size-4" />
-        </button>
+        <VisitSiteLink className="mt-3 h-9 w-full justify-center rounded-lg bg-console-active px-3 text-console-ink hover:bg-console-icon" />
       </div>
     </div>
   );

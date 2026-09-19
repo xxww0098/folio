@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArticleCard } from "@/components/article-card";
 import { PAGE_SIZE, PageNav } from "@/components/page-nav";
+import { PostFeed } from "@/components/post-feed";
 import { SiteShell, siteChromeProps } from "@/components/site-shell";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { getSiteChrome } from "@/lib/blog/server";
-import { TOPICS } from "@/lib/blog/types";
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): { page?: number } => {
@@ -17,32 +18,32 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const chrome = Route.useLoaderData();
-  const { posts } = chrome;
+  const { posts, topics } = chrome;
   const page = Route.useSearch().page ?? 1;
   const start = (page - 1) * PAGE_SIZE;
   const slice = posts.slice(start, start + PAGE_SIZE);
 
   return (
     <SiteShell {...siteChromeProps(chrome)} sidebar>
-      <div className="folio-flow flex flex-wrap gap-2">
-        <span className="inline-flex h-9 items-center rounded-full bg-card px-3 text-sm font-medium shadow-md">
+      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
+        <Badge variant="default" className="h-9 shrink-0 px-3 text-sm">
           全部
-        </span>
-        {TOPICS.map((topic) => (
-          <Link
-            key={topic}
-            to="/topics/$topic"
-            params={{ topic }}
-            className="inline-flex h-9 items-center rounded-full bg-card px-3 font-mono text-xs text-muted-foreground shadow-md transition-[color,transform] duration-150 ease-out hover:text-foreground active:scale-[0.96]"
-          >
-            {topic}
-          </Link>
+        </Badge>
+        {topics.map((topic) => (
+          <Badge key={topic} asChild variant="secondary" className="h-9 shrink-0 px-3 font-mono shadow-md">
+            <Link to="/topics/$topic" params={{ topic }}>
+              {topic}
+            </Link>
+          </Badge>
         ))}
       </div>
-      <div className="folio-flow mt-6 grid grid-cols-1 gap-6">
-        {slice.map((post) => (
-          <ArticleCard key={post.id} post={post} />
-        ))}
+      <div className="folio-flow mt-6">
+        <PostFeed posts={slice} />
+        {slice.length === 0 ? (
+          <Alert variant="muted">
+            <AlertDescription>还没有文章。</AlertDescription>
+          </Alert>
+        ) : null}
       </div>
       <PageNav page={page} total={posts.length} to="/" />
     </SiteShell>

@@ -59,6 +59,10 @@ export function ConsoleCommand({
       void navigate({ to: "/membership" });
       return;
     }
+    if (href === "/") {
+      window.open("/", "_blank", "noopener,noreferrer");
+      return;
+    }
     void navigate({ to: "/" });
   }
 

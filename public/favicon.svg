@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="折页">
   <rect width="32" height="32" rx="8" fill="#0f172a"/>
-  <path d="M6 9.4 15 12.6v14L6 21.1V9.4z" fill="#38bdf8"/>
-  <path d="M17 12.6 26 8.2v12.2L17 26.6V12.6z" fill="#f8fafc"/>
+  <path d="M7 7.5 16 11v13.5L7 19.2V7.5z" fill="#38bdf8"/>
+  <path d="M17 11 25 7v11.6l-8 6.1V11z" fill="#f8fafc"/>
 </svg>

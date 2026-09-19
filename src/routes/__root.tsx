@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/lib/theme/provider";
 import { THEME_BOOT } from "@/lib/theme/apply";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "折页 Folio";
@@ -27,12 +28,11 @@ export const Route = createRootRoute({
         content: "折页是一份写给工程师的独立博客。类型系统、并发模型、数据库与工具链。",
       },
       { name: "theme-color", content: "#0f172a" },
+      { name: "referrer", content: "no-referrer" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: FONT_HREF },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
@@ -49,13 +49,15 @@ function RootDocument() {
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <HeadContent />
       </head>
-      <body className="min-h-screen bg-background text-foreground">
+      <body className="min-h-dvh overflow-x-clip bg-background text-foreground">
         <PreviewHostBridge />
         <ThemeProvider>
-          <AuthProvider>
-            <Outlet />
-            <Toaster />
-          </AuthProvider>
+          <TooltipProvider>
+            <AuthProvider>
+              <Outlet />
+              <Toaster />
+            </AuthProvider>
+          </TooltipProvider>
         </ThemeProvider>
         <Scripts />
       </body>

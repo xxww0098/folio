@@ -1,6 +1,7 @@
 import { getSql } from "@/lib/db";
 import { upsertPostBySlug } from "@/lib/blog/server";
-import { TOPICS, type PostDetail, type Topic } from "@/lib/blog/types";
+import { loadTopics } from "@/lib/topics/server";
+import { type PostDetail } from "@/lib/blog/types";
 import { EMPTY_WIKI } from "@/lib/blog/wikilink";
 import { attachTags } from "@/lib/blog/extras";
 import { buildAccessGate, listAccessFromRow } from "@/lib/membership/server";
@@ -31,7 +32,9 @@ export async function publishMarkdown(
   const { matter, body } = splitFrontMatter(markdown);
   const title = (matter.title ?? "").trim() || firstHeading(body) || "未命名笔记";
   const slugHint = matter.folio?.name || matter.slug;
-  const topic = topicFromMatter(matter, TOPICS[0] as Topic);
+  const topics = await loadTopics();
+  const rawTopic = topicFromMatter(matter, topics[0] ?? "未分类");
+  const topic = topics.includes(rawTopic) ? rawTopic : topics[0] ?? rawTopic;
   const status =
     options?.status ?? matter.status ?? (matter.folio?.publish === false ? "draft" : "published");
   const cover = firstCover(matter, body);

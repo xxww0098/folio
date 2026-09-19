@@ -1,4 +1,5 @@
 import { parseFence } from "./highlight";
+import { parseVideoUrl, videoFromBlock } from "./video-embed";
 
 /** Convert the site's markdown dialect into HTML for TipTap. */
 export function markdownToHtml(source: string): string {
@@ -57,7 +58,13 @@ export function markdownToHtml(source: string): string {
         return `<ol>${items}</ol>`;
       }
       const image = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(block);
-      if (image) return `<p><img src="${escapeAttr(image[2])}" alt="${escapeAttr(image[1])}"></p>`;
+      if (image) {
+        const video = videoFromBlock(block);
+        if (video) return videoHtml(video.src);
+        return `<p><img src="${escapeAttr(image[2])}" alt="${escapeAttr(image[1])}"></p>`;
+      }
+      const video = videoFromBlock(block);
+      if (video) return videoHtml(video.src);
       return `<p>${inlineMd(block)}</p>`;
     })
     .join("");
@@ -65,7 +72,7 @@ export function markdownToHtml(source: string): string {
 
 function inlineMd(text: string): string {
   return escapeHtml(text)
-    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, src) => `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt)}">`)
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_m, alt, src) => `<img src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" loading="lazy" decoding="async">`)
     .replace(/\[\[([^\[\]]+)\]\]/g, (_m, inner) => {
       const pipe = String(inner).indexOf("|");
       const dest = pipe >= 0 ? String(inner).slice(0, pipe).trim() : String(inner).trim();
@@ -87,6 +94,15 @@ function escapeHtml(value: string) {
     .replace(/&/g, "\u0026amp;")
     .replace(/</g, "\u0026lt;")
     .replace(/>/g, "\u0026gt;");
+}
+
+function videoHtml(src: string) {
+  const info = parseVideoUrl(src);
+  if (!info) return `<p>${escapeHtml(src)}</p>`;
+  if (info.kind === "file") {
+    return `<div class="folio-video" data-video-src="${escapeAttr(info.src)}"><video controls src="${escapeAttr(info.embed)}"></video></div>`;
+  }
+  return `<div class="folio-video" data-video-src="${escapeAttr(info.src)}"><iframe src="${escapeAttr(info.embed)}" title="${escapeAttr(info.title)}" allowfullscreen loading="lazy"></iframe></div>`;
 }
 
 function escapeAttr(value: string) {
@@ -129,7 +145,12 @@ function serializeBlocks(node: Element): string {
       const fence = filename ? `${lang}:${filename}` : lang;
       parts.push("```" + fence + "\n" + (el.textContent ?? "").replace(/\n$/, "") + "\n```");
     } else if (tag === "hr") parts.push("---");
-    else if (tag === "img") {
+    else if (tag === "div" && el.hasAttribute("data-video-src")) {
+      parts.push(el.getAttribute("data-video-src") || "");
+    } else if (tag === "iframe" || tag === "video") {
+      const src = el.getAttribute("data-video-src") || el.getAttribute("src") || "";
+      if (src) parts.push(src);
+    } else if (tag === "img") {
       const src = el.getAttribute("src") ?? "";
       const alt = el.getAttribute("alt") ?? "";
       parts.push(`![${alt}](${src})`);

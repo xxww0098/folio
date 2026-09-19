@@ -86,15 +86,14 @@ test("parseListenerInodes reads the tcp6 dump the same way", () => {
 // /proc/<pid>/cmdline is NUL-separated.
 const cmdline = (...argv) => argv.join("\u0000");
 
-test("looksLikePreviewProcess matches the npm wrapper and its vite child", () => {
-  const npmRun = cmdline("node", "/usr/lib/node_modules/npm/bin/npm-cli.js", "run", "preview");
-  assert.equal(looksLikePreviewProcess(npmRun), true);
-  assert.equal(looksLikePreviewProcess(cmdline("npm", "run", "preview")), true);
+test("looksLikePreviewProcess matches the bun wrapper and its vite child", () => {
+  const bunRun = cmdline("bun", "run", "preview");
+  assert.equal(looksLikePreviewProcess(bunRun), true);
+  assert.equal(looksLikePreviewProcess(cmdline("node", "/usr/lib/node_modules/npm/bin/npm-cli.js", "run", "preview")), true);
   assert.equal(
     looksLikePreviewProcess(cmdline("node", "/ws/node_modules/.bin/vite", "preview")),
     true,
   );
-  // `ps -o command=` output is space-separated.
   assert.equal(looksLikePreviewProcess("node /ws/node_modules/.bin/vite preview"), true);
 });
 
@@ -109,6 +108,8 @@ test("looksLikePreviewProcess spares the sibling scripts and re-used pids", () =
   assert.equal(looksLikePreviewProcess(thumbnail), false);
   assert.equal(looksLikePreviewProcess(cmdline("node", "scripts/preview.mjs", "stop")), false);
   // This tooling's own npm wrappers, which carry no `.mjs` in their cmdline.
+  assert.equal(looksLikePreviewProcess(cmdline("bun", "run", "preview:stop")), false);
+  assert.equal(looksLikePreviewProcess(cmdline("bun", "run", "preview:restart")), false);
   const npmCli = "/usr/lib/node_modules/npm/bin/npm-cli.js";
   assert.equal(looksLikePreviewProcess(cmdline("node", npmCli, "run", "preview:stop")), false);
   assert.equal(looksLikePreviewProcess(cmdline("node", npmCli, "run", "preview:restart")), false);
@@ -134,7 +135,7 @@ test("previewOwners adds a pidfile pid whose command line is still the preview",
   const owners = previewOwners({
     portPids: [51],
     pidFilePid: 50,
-    cmdlineOf: (pid) => (pid === 50 ? cmdline("node", "npm-cli.js", "run", "preview") : ""),
+    cmdlineOf: (pid) => (pid === 50 ? cmdline("bun", "run", "preview") : ""),
   });
   assert.deepEqual(owners, [51, 50]);
 });

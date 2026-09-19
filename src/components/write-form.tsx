@@ -3,9 +3,10 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { createPost, deletePost, getWikiCatalog, listRevisions, restoreRevision, updatePost } from "@/lib/blog/server";
 import { ArticleBody } from "@/lib/blog/markdown";
-import { TOPICS, type PostDetail, type PostRevision, type PostStatus, type Topic } from "@/lib/blog/types";
+import { type PostDetail, type PostRevision, type PostStatus } from "@/lib/blog/types";
+import { getTopics } from "@/lib/topics/server";
 import { ACCESS_LABEL, ACCESS_MODES, EXCLUSIVE_DAY_OPTIONS, type AccessMode } from "@/lib/membership/access";
-import { buildWikiGraph, wikiShortLabel, type WikiCatalogItem } from "@/lib/blog/wikilink";
+import { buildWikiGraph, type WikiCatalogItem } from "@/lib/blog/wikilink";
 import { formatZhDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { VisualEditor } from "@/components/visual-editor";
+import { WikiSuggestMenu } from "@/components/wiki-suggest-menu";
+import { uploadAttachment } from "@/lib/attachments/server";
 
 const COVERS = [
   { value: "/covers/01-ts.jpg", label: "夜间书桌" },
@@ -31,7 +34,8 @@ export function WriteForm({ post }: { post?: PostDetail }) {
   const [title, setTitle] = useState(post?.title ?? "");
   const [excerpt, setExcerpt] = useState(post?.excerpt ?? "");
   const [body, setBody] = useState(post?.body ?? "");
-  const [topic, setTopic] = useState<Topic>((TOPICS as readonly string[]).includes(post?.topic ?? "") ? (post?.topic as Topic) : TOPICS[0]);
+  const [topic, setTopic] = useState(post?.topic ?? "");
+  const [topics, setTopics] = useState<string[]>(post?.topic ? [post.topic] : []);
   const [coverImage, setCoverImage] = useState(post?.coverImage ?? COVERS[0].value);
   const [tags, setTags] = useState((post?.tags ?? []).map((tag) => tag.name).join("，"));
   const [allowComments, setAllowComments] = useState(post?.allowComments !== false);
@@ -40,6 +44,7 @@ export function WriteForm({ post }: { post?: PostDetail }) {
   const [pending, setPending] = useState<"published" | "draft" | "delete" | null>(null);
   const [picker, setPicker] = useState<"cover" | "body" | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [wikiQuery, setWikiQuery] = useState("");
   const [mode, setMode] = useState<"visual" | "source" | "preview">("visual");
   const [revisions, setRevisions] = useState<PostRevision[]>([]);
   const [catalog, setCatalog] = useState<WikiCatalogItem[]>(post?.wiki.catalog ?? []);
@@ -55,6 +60,16 @@ export function WriteForm({ post }: { post?: PostDetail }) {
       .then(setCatalog)
       .catch(() => setCatalog(post?.wiki.catalog ?? []));
   }, [post?.wiki.catalog]);
+
+  useEffect(() => {
+    void getTopics()
+      .then((list) => {
+        const next = post?.topic && !list.includes(post.topic) ? [post.topic, ...list] : list;
+        setTopics(next);
+        setTopic((current) => current || next[0] || "");
+      })
+      .catch(() => undefined);
+  }, [post?.topic]);
 
   useEffect(() => {
     if (!post) return;
@@ -174,9 +189,10 @@ export function WriteForm({ post }: { post?: PostDetail }) {
     [body, catalog, slug],
   );
 
-  function insertWiki(item: WikiCatalogItem) {
-    const token = `[[${item.slug}|${wikiShortLabel(item.title)}]]`;
+  function insertWiki(inner: string) {
+    const token = `[[${inner}]]`;
     setBody((current) => (current.trim() ? `${current.trimEnd()} ${token}` : token));
+    setWikiQuery("");
   }
 
   async function onRestore(rev: PostRevision) {
@@ -293,12 +309,12 @@ export function WriteForm({ post }: { post?: PostDetail }) {
           <div className="mt-6 space-y-5">
             <div className="space-y-2">
               <Label>分类</Label>
-              <Select value={topic} onValueChange={(value) => setTopic(value as Topic)}>
+              <Select value={topic || undefined} onValueChange={setTopic}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {TOPICS.map((item) => (
+                  {topics.map((item) => (
                     <SelectItem key={item} value={item}>
                       {item}
                     </SelectItem>
@@ -327,6 +343,39 @@ export function WriteForm({ post }: { post?: PostDetail }) {
                 <Button type="button" variant="outline" onClick={() => setPicker("cover")}>
                   附件
                 </Button>
+                <label className="inline-flex h-9 cursor-pointer items-center rounded-md border border-border px-3 text-sm">
+                  上传
+                  <input
+                    type="file"
+                    accept="image/gif,image/jpeg,image/png,image/webp,.gif"
+                    className="hidden"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = () => {
+                        void uploadAttachment({
+                          data: {
+                            filename: file.name || "cover.gif",
+                            mimeType: file.type || undefined,
+                            dataBase64: String(reader.result ?? ""),
+                            alt: title || file.name.replace(/\.[^.]+$/, ""),
+                            groupName: "封面",
+                          },
+                        })
+                          .then((item) => {
+                            setCoverImage(item.url);
+                            toast.success("封面已更新");
+                          })
+                          .catch((error: unknown) => {
+                            toast.error(error instanceof Error ? error.message : "封面上传失败");
+                          });
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                  />
+                </label>
               </div>
               {coverImage ? (
                 <img src={coverImage} alt="" className="folio-photo mt-2 aspect-16/10 w-full rounded-lg object-cover" />
@@ -374,42 +423,59 @@ export function WriteForm({ post }: { post?: PostDetail }) {
             </div>
             {accessMode === "early" ? (
               <div className="space-y-2">
-                <Label>开放时限</Label>
-                <Select value={exclusiveDays} onValueChange={setExclusiveDays}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {EXCLUSIVE_DAY_OPTIONS.map((days) => (
-                      <SelectItem key={days} value={String(days)}>
-                        {days} 天后公开
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="exclusive-days">开放时限</Label>
+                <div className="flex flex-wrap gap-2">
+                  {EXCLUSIVE_DAY_OPTIONS.map((days) => (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => setExclusiveDays(String(days))}
+                      className={
+                        exclusiveDays === String(days)
+                          ? "inline-flex h-9 items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground"
+                          : "inline-flex h-9 items-center rounded-md bg-secondary px-3 text-xs text-muted-foreground hover:text-foreground"
+                      }
+                    >
+                      {days} 天
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="exclusive-days"
+                    type="number"
+                    min={1}
+                    max={365}
+                    inputMode="numeric"
+                    value={exclusiveDays}
+                    onChange={(event) => setExclusiveDays(event.target.value)}
+                    placeholder="天数"
+                    className="max-w-28"
+                  />
+                  <span className="text-sm text-muted-foreground">天后公开</span>
+                </div>
               </div>
             ) : null}
             <div className="space-y-2">
-              <Label>双链</Label>
+              <Label htmlFor="wiki-search">双链</Label>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                点一篇已发布的文章，插入 <span className="font-mono">[[别名]]</span>。
+                正文里输入 <span className="font-mono">[[</span> 搜索文章，和 Obsidian 一样。也可以在这里找。
               </p>
-              <ul className="max-h-48 space-y-1 overflow-y-auto rounded-lg bg-card p-2 shadow-md">
-                {catalog
-                  .filter((item) => item.slug !== post?.slug)
-                  .map((item) => (
-                    <li key={item.slug}>
-                      <button
-                        type="button"
-                        className="flex h-10 w-full items-center justify-between rounded-md px-2 text-left text-sm hover:bg-secondary"
-                        onClick={() => insertWiki(item)}
-                      >
-                        <span className="min-w-0 truncate">{item.title}</span>
-                        <span className="shrink-0 font-mono text-xs text-muted-foreground">{item.slug}</span>
-                      </button>
-                    </li>
-                  ))}
-              </ul>
+              <Input
+                id="wiki-search"
+                value={wikiQuery}
+                onChange={(event) => setWikiQuery(event.target.value)}
+                placeholder="搜索文章"
+              />
+              {wikiQuery.trim() ? (
+                <WikiSuggestMenu
+                  query={wikiQuery}
+                  catalog={catalog}
+                  exclude={post?.slug}
+                  onPick={(hit) => insertWiki(hit.inner)}
+                  onClose={() => setWikiQuery("")}
+                />
+              ) : null}
               {liveWiki.outgoing.length ? (
                 <p className="text-xs text-muted-foreground">
                   出链 {liveWiki.outgoing.length} 篇

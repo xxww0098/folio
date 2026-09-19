@@ -8,7 +8,7 @@ export const Route = createFileRoute("/$entry")({
     if (!ok) throw notFound();
     throw redirect({ to: "/console", reloadDocument: true });
   },
-  notFoundComponent: MissingPage,
+  notFoundComponent: () => <MissingPage />,
   component: function EntranceForward() {
     return null;
   },

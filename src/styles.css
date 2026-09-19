@@ -72,10 +72,10 @@
 
 :root {
   color-scheme: light;
-  --family-sans: "Inter", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
-  --family-serif: "Source Serif 4", "Noto Serif SC", "Songti SC", ui-serif, serif;
+  --family-sans: ui-sans-serif, system-ui, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Inter", sans-serif;
+  --family-serif: "Songti SC", "Source Han Serif SC", "Noto Serif SC", "Source Serif 4", ui-serif, serif;
   --family-display: var(--family-sans);
-  --family-mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --family-mono: ui-monospace, SFMono-Regular, Menlo, "JetBrains Mono", "IBM Plex Mono", monospace;
   --r-xs: 4px;
   --r-sm: 6px;
   --r-md: 10px;
@@ -570,6 +570,29 @@
   font-weight: 500;
 }
 
+.folio-video {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  margin: 1.5rem 0;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: #0b0f14;
+}
+
+.folio-video iframe,
+.folio-video video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #0b0f14;
+}
+
+.tiptap .folio-video {
+  margin: 1rem 0;
+}
 .tiptap {
   min-height: 20rem;
 }
@@ -697,6 +720,28 @@
   text-decoration: underline dotted;
   text-underline-offset: 0.28em;
 }
+.article-body {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 639px) {
+  .article-body {
+    font-size: 1.0625rem;
+    line-height: 1.8;
+  }
+  .article-body h2 {
+    font-size: 1.25rem;
+    line-height: 1.35;
+  }
+  .article-body h3 {
+    font-size: 1.0625rem;
+  }
+  .folio-video iframe,
+  .folio-video video {
+    width: 100%;
+    max-width: 100%;
+  }
+}
 .article-body .wiki-link {
   text-decoration: underline dotted;
   text-underline-offset: 0.28em;
@@ -757,6 +802,10 @@
   --popover-foreground: #1d2129;
   --primary: #3370ff;
   --primary-foreground: #ffffff;
+  --color-primary: #3370ff;
+  --color-primary-foreground: #ffffff;
+  --ring: #3370ff;
+  --color-ring: #3370ff;
   --secondary: #f2f3f5;
   --secondary-foreground: #1d2129;
   --muted: #f2f3f5;
@@ -765,7 +814,6 @@
   --accent-foreground: #1d2129;
   --border: #e5e6eb;
   --input: #e5e6eb;
-  --ring: #3370ff;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
 }
@@ -810,10 +858,40 @@
   transform: rotate(45deg);
 }
 
+.console-app .console-quick-tile {
+  transition:
+    background-color 180ms var(--ease-folio, cubic-bezier(0.16, 1, 0.3, 1)),
+    box-shadow 180ms var(--ease-folio, cubic-bezier(0.16, 1, 0.3, 1)),
+    transform 180ms var(--ease-folio, cubic-bezier(0.16, 1, 0.3, 1)),
+    border-color 180ms var(--ease-folio, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.console-app .console-quick-tile:hover,
+.console-app .console-quick-tile:focus-visible {
+  background: #d8f4ef;
+  box-shadow:
+    0 10px 24px rgb(61 205 192 / 0.22),
+    inset 0 0 0 1.5px rgb(61 205 192 / 0.7);
+  transform: translateY(-3px);
+}
+
+.console-app .console-quick-tile:hover .console-quick-icon,
+.console-app .console-quick-tile:focus-visible .console-quick-icon {
+  background: var(--color-console-mint);
+  color: white;
+}
+
+.console-app .console-quick-tile:hover .console-quick-arrow,
+.console-app .console-quick-tile:focus-visible .console-quick-arrow {
+  color: var(--color-console-mint);
+  transform: translateX(3px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .console-app .console-nav-item,
   .console-app .console-quick-tile {
     transition: none;
+    transform: none;
   }
 }
 
@@ -876,15 +954,22 @@
 .folio-flow > *:nth-child(7) { animation-delay: calc(var(--motion-stagger) * 6); }
 .folio-flow > *:nth-child(n + 8) { animation-delay: calc(var(--motion-stagger) * 7); }
 
-.folio-cover {
-  transform-origin: left center;
-  transition-property: transform;
-  transition-duration: 500ms;
-  transition-timing-function: var(--ease-folio);
+.folio-badge-paid {
+  background: #0b0b0c;
+  color: #e0c36a;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, #e0c36a 50%, transparent);
+  letter-spacing: 0.04em;
 }
-.group:hover .folio-cover,
-.group:focus-within .folio-cover {
-  transform: rotateY(-8deg);
+
+.folio-cover {
+  display: block;
+}
+
+.folio-badge-paid {
+  background: #0b0b0c;
+  color: #e0c36a;
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, #e0c36a 50%, transparent);
+  letter-spacing: 0.04em;
 }
 
 .folio-nav-link {

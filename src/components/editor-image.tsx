@@ -14,13 +14,13 @@ function fileIdFromSrc(src: string) {
   } catch {
     /* keep raw */
   }
-  const match = /\/api\/files\/(\d+)\/?$/.exec(path);
+  const match = /\/api\/files\/(\d+)(?:\/|$)/.exec(path);
   if (!match) return null;
   const id = Number(match[1]);
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
-export function EditorImageView({ node, updateAttributes, selected }: NodeViewProps) {
+export function EditorImageView({ node, updateAttributes, selected, deleteNode }: NodeViewProps) {
   const src = String(node.attrs.src ?? "");
   const alt = String(node.attrs.alt ?? "");
   const canPublish = fileIdFromSrc(src) !== null;
@@ -106,6 +106,15 @@ export function EditorImageView({ node, updateAttributes, selected }: NodeViewPr
           )}
           <button type="button" onClick={() => void copySrc()}>
             复制地址
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMenu(null);
+              deleteNode();
+            }}
+          >
+            从正文移除
           </button>
         </div>
       ) : null}

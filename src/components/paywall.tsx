@@ -1,16 +1,20 @@
 import { Link } from "@tanstack/react-router";
 import { Lock } from "lucide-react";
 import { describeUnlock, type AccessGate } from "@/lib/membership/access";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function Paywall({ access, slug }: { access: AccessGate; slug: string }) {
   if (!access.locked) {
     if (access.isStaff && access.exclusive) {
       return (
-        <p className="mt-8 rounded-lg bg-secondary px-4 py-3 text-sm text-muted-foreground">
-          编辑可见全文。读者
-          {access.mode === "paid" ? "订阅前看不到正文" : ` ${describeUnlock(access.publicAt)} 前看不到正文`}。
-        </p>
+        <Alert variant="muted" className="mt-8">
+          <AlertDescription>
+            编辑可见全文。读者
+            {access.mode === "paid" ? "订阅前看不到正文" : ` ${describeUnlock(access.publicAt)} 前看不到正文`}。
+          </AlertDescription>
+        </Alert>
       );
     }
     return null;
@@ -22,19 +26,19 @@ export function Paywall({ access, slug }: { access: AccessGate; slug: string }) 
   return (
     <aside className="relative mt-2">
       <div className="pointer-events-none absolute inset-x-0 -top-16 h-16 bg-gradient-to-t from-card to-transparent" />
-      <div className="rounded-xl bg-header px-5 py-6 text-header-foreground shadow-md sm:px-8 sm:py-8">
-        <div className="flex items-start gap-3">
+      <Card className="border-0 bg-header text-header-foreground shadow-md">
+        <CardHeader className="flex-row items-start gap-3 space-y-0 px-5 py-6 sm:px-8 sm:pt-8">
           <span className="mt-0.5 grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
             <Lock className="size-4" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-xl font-semibold tracking-tight">{early ? "会员抢先" : "会员专享"}</h2>
-            <p className="mt-2 text-sm text-header-foreground/75">
+            <CardTitle className="font-sans text-xl text-header-foreground">{early ? "会员抢先" : "会员专享"}</CardTitle>
+            <CardDescription className="mt-2 text-header-foreground/75">
               {early ? `${describeUnlock(access.publicAt)} 后公开` : "订阅后阅读，不限次数。"}
-            </p>
+            </CardDescription>
           </div>
-        </div>
-        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+        </CardHeader>
+        <CardContent className="px-5 pb-6 sm:px-8 sm:pb-8">
           {access.reason === "login" ? (
             <Button asChild className="min-h-11">
               <Link to="/login" search={{ next }}>
@@ -48,8 +52,8 @@ export function Paywall({ access, slug }: { access: AccessGate; slug: string }) 
               </Link>
             </Button>
           )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </aside>
   );
 }

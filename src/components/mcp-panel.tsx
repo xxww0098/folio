@@ -60,6 +60,9 @@ export function McpPanel({ showTokens = true }: { showTokens?: boolean }) {
         "Content-Type": "application/json",
         Accept: "application/json, text/event-stream",
         Authorization: `Bearer ${freshToken}`,
+        "MCP-Protocol-Version": "2026-07-28",
+        "Mcp-Method": "server/discover",
+        "Mcp-Name": "server",
       };
       const init = await fetch("/api/mcp", {
         method: "POST",
@@ -67,27 +70,44 @@ export function McpPanel({ showTokens = true }: { showTokens?: boolean }) {
         body: JSON.stringify({
           jsonrpc: "2.0",
           id: 1,
-          method: "initialize",
+          method: "server/discover",
           params: {
-            protocolVersion: "2025-03-26",
-            capabilities: {},
-            clientInfo: { name: "folio-web", version: "1.0.0" },
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientInfo": { name: "folio-web", version: "1.0.0" },
+              "io.modelcontextprotocol/clientCapabilities": {},
+            },
           },
         }),
       });
-      const initBody = (await init.json()) as { result?: { serverInfo?: { name?: string } }; error?: { message?: string } };
+      const initBody = (await init.json()) as {
+        result?: { _meta?: { "io.modelcontextprotocol/serverInfo"?: { name?: string } }; supportedVersions?: string[] };
+        error?: { message?: string };
+      };
       if (!init.ok || initBody.error) {
-        throw new Error(initBody.error?.message || `初始化失败（${init.status}）`);
+        throw new Error(initBody.error?.message || `发现失败（${init.status}）`);
       }
       const listed = await fetch("/api/mcp", {
         method: "POST",
-        headers,
-        body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "whoami", arguments: {} } }),
+        headers: { ...headers, "Mcp-Method": "tools/call", "Mcp-Name": "whoami" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "tools/call",
+          params: {
+            name: "whoami",
+            arguments: {},
+            _meta: {
+              "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+              "io.modelcontextprotocol/clientInfo": { name: "folio-web", version: "1.0.0" },
+            },
+          },
+        }),
       });
       const listedBody = (await listed.json()) as { result?: { content?: Array<{ text?: string }>; isError?: boolean } };
       const text = listedBody.result?.content?.[0]?.text ?? "";
       setProbe(text || JSON.stringify(listedBody, null, 2));
-      toast.success(`已连通 ${initBody.result?.serverInfo?.name ?? "folio"}`);
+      toast.success(`已连通 ${initBody.result?._meta?.["io.modelcontextprotocol/serverInfo"]?.name ?? "folio"}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "探测失败");
     } finally {
@@ -109,7 +129,7 @@ export function McpPanel({ showTokens = true }: { showTokens?: boolean }) {
       <section className="rounded-xl bg-card p-5 shadow-md">
         <h2 className="text-base font-semibold">端点</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          客户端用 Streamable HTTP 连到这个地址，请求头带个人令牌。和 Obsidian 同步共用同一类{" "}
+          客户端用 Streamable HTTP 连到这个地址，只认协议 2026-07-28：无会话、无 initialize，先调 server/discover。请求头带个人令牌。和 Obsidian 同步共用同一类{" "}
           <span className="font-mono text-xs">folio_</span> 令牌。
         </p>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -201,7 +221,7 @@ export function McpPanel({ showTokens = true }: { showTokens?: boolean }) {
 
       <section className="rounded-xl bg-card p-5 shadow-md">
         <h2 className="text-base font-semibold">工具</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Agent 可列出、读取、推送、改权限、进回收站、上传图片。</p>
+        <p className="mt-1 text-sm text-muted-foreground">文章、评论、瞬间、友链、图库和前台栏目都可以远程管理。</p>
         <ul className="mt-4 divide-y divide-border overflow-hidden rounded-lg border border-border">
           {MCP_TOOLS.map((tool) => (
             <li key={tool.name} className="px-4 py-3">

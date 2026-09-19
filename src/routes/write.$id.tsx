@@ -9,5 +9,5 @@ export const Route = createFileRoute("/write/$id")({
     await requireWriterAccess(`/console?section=write&id=${id}`);
     throw redirect({ to: "/console", search: { section: "write", id } });
   },
-  notFoundComponent: MissingPage,
+  notFoundComponent: () => <MissingPage />,
 });

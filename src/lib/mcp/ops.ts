@@ -1,11 +1,14 @@
-import { saveAttachmentBytes } from "@/lib/attachments/server";
+import { saveAttachmentBytes, attachmentPermalink } from "@/lib/attachments/server";
 import { upsertPostBySlug } from "@/lib/blog/server";
-import { TOPICS, type Topic } from "@/lib/blog/types";
 import { getSql } from "@/lib/db";
 import { clampExclusiveDays, isAccessMode, type AccessMode } from "@/lib/membership/access";
 import { displayNameFor } from "@/lib/profile";
 import { getActor } from "@/lib/roles";
 import { listSyncPosts, publishMarkdown, pullMarkdown } from "@/lib/obsidian/sync";
+import { CURRENT_VERSION } from "@/lib/release";
+import { loadTopics } from "@/lib/topics/server";
+import { MAX_TOPICS, normalizeTopicName } from "@/lib/topics/catalog";
+import { DEFAULT_FRONT_PAGES, isFrontPage, parseFrontPages } from "@/lib/pages/visibility";
 import { asBoolean, asNumber, asString, asStringArray, jsonResult, type CallToolResult } from "./protocol";
 
 type PostRow = {
@@ -73,6 +76,15 @@ export async function callTool(
     "delete_post",
     "restore_post",
     "upload_image",
+    "add_comment",
+    "delete_comment",
+    "create_moment",
+    "delete_moment",
+    "create_link",
+    "delete_link",
+    "create_photo",
+    "set_front_page",
+    "add_topic",
   ]);
   if (writeTools.has(name)) {
     const actor = await getActor(ctx.userId);
@@ -100,11 +112,43 @@ export async function callTool(
     case "restore_post":
       return restore(ctx.userId, ctx.origin, args);
     case "list_topics":
-      return jsonResult({ topics: [...TOPICS] });
+      return jsonResult({ topics: await loadTopics() });
     case "list_revisions":
       return revisions(ctx.userId, args);
     case "upload_image":
       return upload(ctx.userId, ctx.origin, args);
+    case "site_overview":
+      return siteOverview();
+    case "list_comments":
+      return listCommentsTool(args);
+    case "add_comment":
+      return addCommentTool(ctx.userId, args);
+    case "delete_comment":
+      return deleteCommentTool(ctx.userId, args);
+    case "list_moments":
+      return listMomentsTool(args);
+    case "create_moment":
+      return createMomentTool(ctx.userId, args);
+    case "delete_moment":
+      return deleteMomentTool(ctx.userId, args);
+    case "list_links":
+      return listLinksTool();
+    case "create_link":
+      return createLinkTool(ctx.userId, args);
+    case "delete_link":
+      return deleteLinkTool(ctx.userId, args);
+    case "list_photos":
+      return listPhotosTool();
+    case "create_photo":
+      return createPhotoTool(ctx.userId, args);
+    case "list_pages":
+      return listPagesTool();
+    case "set_front_page":
+      return setFrontPageTool(ctx.userId, args);
+    case "add_topic":
+      return addTopicTool(ctx.userId, args);
+    case "get_revision":
+      return getRevisionTool(ctx.userId, args);
     default:
       return jsonResult({ error: `未知工具：${name}` }, true);
   }
@@ -113,14 +157,16 @@ export async function callTool(
 async function whoami(userId: string) {
   const actor = await getActor(userId);
   const sql = await getSql();
-  const name = await displayNameFor(sql, userId, "作者");
+  const name = await displayNameFor(sql, userId, "站长");
   return jsonResult({
     userId,
     name,
     role: actor.role,
     canWrite: actor.canWrite,
     canEditAll: actor.canEditAll,
-    topics: [...TOPICS],
+    topics: await loadTopics(),
+    pages: await readPages(),
+    version: CURRENT_VERSION.replace(/^v/, ""),
   });
 }
 
@@ -249,7 +295,7 @@ async function update(userId: string, origin: string, args: Record<string, unkno
   const title = asString(args.title)?.trim() || row.title;
   const excerpt = asString(args.excerpt)?.trim() || row.excerpt;
   const body = asString(args.body) ?? row.body;
-  const topic = (asString(args.topic)?.trim() || row.topic) as Topic;
+  const topic = asString(args.topic)?.trim() || row.topic;
   const statusRaw = asString(args.status);
   const status = statusRaw === "draft" || statusRaw === "published" ? statusRaw : row.status;
   const accessRaw = asString(args.access);
@@ -362,12 +408,347 @@ async function upload(userId: string, origin: string, args: Record<string, unkno
     alt: alt ?? filename.replace(/\.[^.]+$/, ""),
     groupName: "Agent",
   });
+  const permalink = attachmentPermalink(item.url, origin);
   return jsonResult({
     id: item.id,
     filename: item.filename,
-    url: item.url,
-    permalink: `${origin}${item.url}`,
-    markdown: `![${item.alt || item.filename}](${origin}${item.url})`,
+    url: permalink,
+    permalink,
+    markdown: `![${item.alt || item.filename}](${permalink})`,
+  });
+}
+
+async function requireAdmin(userId: string) {
+  const actor = await getActor(userId);
+  if (!actor.isAdmin) throw new Error("只有管理员可以执行");
+  return actor;
+}
+
+async function readPages() {
+  try {
+    const sql = await getSql();
+    const rows = await sql.query<{ value: string }>(`select value from site_settings where key = $1 limit 1`, ["front_pages"]);
+    return parseFrontPages(rows[0]?.value);
+  } catch {
+    return { ...DEFAULT_FRONT_PAGES };
+  }
+}
+
+async function siteOverview() {
+  const sql = await getSql();
+  const posts = await sql.query<{ published: number; draft: number; trash: number }>(
+    `select
+       count(*) filter (where deleted_at is null and status = 'published')::int as published,
+       count(*) filter (where deleted_at is null and status = 'draft')::int as draft,
+       count(*) filter (where deleted_at is not null)::int as trash
+     from posts`,
+  );
+  const extras = await sql.query<{ comments: number; members: number; moments: number }>(
+    `select
+       (select count(*)::int from comments) as comments,
+       (select count(*)::int from user_roles) as members,
+       (select count(*)::int from moments) as moments`,
+  );
+  return jsonResult({
+    version: CURRENT_VERSION.replace(/^v/, ""),
+    posts: posts[0] ?? { published: 0, draft: 0, trash: 0 },
+    comments: extras[0]?.comments ?? 0,
+    members: extras[0]?.members ?? 0,
+    moments: extras[0]?.moments ?? 0,
+    topics: await loadTopics(),
+    pages: await readPages(),
+  });
+}
+
+async function listCommentsTool(args: Record<string, unknown>) {
+  const sql = await getSql();
+  const limit = clampLimit(args.limit, 30, 80);
+  const slug = asString(args.slug)?.trim();
+  const rows = slug
+    ? await sql.query<{
+        id: number;
+        post_id: number;
+        slug: string;
+        title: string;
+        author_name: string;
+        body: string;
+        parent_id: number | null;
+        created_at: string;
+      }>(
+        `select c.id, c.post_id, p.slug, p.title, c.author_name, c.body, c.parent_id, c.created_at
+         from comments c join posts p on p.id = c.post_id
+         where p.slug = $1
+         order by c.created_at desc limit $2`,
+        [slug, limit],
+      )
+    : await sql.query<{
+        id: number;
+        post_id: number;
+        slug: string;
+        title: string;
+        author_name: string;
+        body: string;
+        parent_id: number | null;
+        created_at: string;
+      }>(
+        `select c.id, c.post_id, p.slug, p.title, c.author_name, c.body, c.parent_id, c.created_at
+         from comments c join posts p on p.id = c.post_id
+         order by c.created_at desc limit $1`,
+        [limit],
+      );
+  return jsonResult({
+    comments: rows.map((row) => ({
+      id: row.id,
+      postId: row.post_id,
+      slug: row.slug,
+      postTitle: row.title,
+      authorName: row.author_name,
+      body: row.body,
+      parentId: row.parent_id,
+      createdAt: String(row.created_at),
+    })),
+  });
+}
+
+async function addCommentTool(userId: string, args: Record<string, unknown>) {
+  const body = asString(args.body)?.trim() ?? "";
+  if (body.length < 2 || body.length > 1000) throw new Error("评论需 2–1000 字");
+  const sql = await getSql();
+  let postId = asNumber(args.postId);
+  const slug = asString(args.slug)?.trim();
+  if (!postId && slug) {
+    const found = await sql.query<{ id: number }>(
+      `select id from posts where slug = $1 and status = 'published' and deleted_at is null limit 1`,
+      [slug],
+    );
+    postId = found[0]?.id;
+  }
+  if (!postId) throw new Error("请提供 slug 或 postId");
+  const published = await sql.query<{ id: number; allow_comments: boolean }>(
+    `select id, allow_comments from posts where id = $1 and status = 'published' and deleted_at is null`,
+    [postId],
+  );
+  if (!published[0]) throw new Error("文章不存在或尚未刊出");
+  if (published[0].allow_comments === false) throw new Error("本文已关闭评论");
+  let parentId = asNumber(args.parentId) ?? null;
+  if (parentId) {
+    const parent = await sql.query<{ id: number; parent_id: number | null }>(
+      `select id, parent_id from comments where id = $1 and post_id = $2`,
+      [parentId, postId],
+    );
+    if (!parent[0]) throw new Error("回复的评论不存在");
+    if (parent[0].parent_id) parentId = parent[0].parent_id;
+  }
+  const authorName = await displayNameFor(sql, userId, "读者");
+  const rows = await sql`
+    insert into comments (post_id, user_id, author_name, body, parent_id)
+    values (${postId}, ${userId}, ${authorName}, ${body}, ${parentId})
+    returning id, post_id, created_at
+  `;
+  return jsonResult({
+    id: rows[0]?.id,
+    postId,
+    parentId,
+    createdAt: String(rows[0]?.created_at ?? ""),
+  });
+}
+
+async function deleteCommentTool(userId: string, args: Record<string, unknown>) {
+  const id = asNumber(args.id);
+  if (!id) throw new Error("请提供 id");
+  const sql = await getSql();
+  const actor = await getActor(userId);
+  if (actor.canEditAll) {
+    await sql`delete from comments where id = ${id}`;
+  } else {
+    await sql`
+      delete from comments
+      where id = ${id}
+        and (user_id = ${userId} or post_id in (select id from posts where user_id = ${userId}))
+    `;
+  }
+  return jsonResult({ ok: true, id });
+}
+
+async function listMomentsTool(args: Record<string, unknown>) {
+  const sql = await getSql();
+  const limit = clampLimit(args.limit, 20, 40);
+  const rows = await sql.query<{ id: number; author_name: string; body: string; created_at: string }>(
+    `select id, author_name, body, created_at from moments order by created_at desc limit $1`,
+    [limit],
+  );
+  return jsonResult({
+    moments: rows.map((row) => ({
+      id: row.id,
+      authorName: row.author_name,
+      body: row.body,
+      createdAt: String(row.created_at),
+    })),
+  });
+}
+
+async function createMomentTool(userId: string, args: Record<string, unknown>) {
+  const body = asString(args.body)?.trim() ?? "";
+  if (body.length < 2 || body.length > 280) throw new Error("瞬间需 2–280 字");
+  const sql = await getSql();
+  const authorName = await displayNameFor(sql, userId, "站长");
+  const rows = await sql`
+    insert into moments (user_id, author_name, body)
+    values (${userId}, ${authorName}, ${body})
+    returning id, created_at
+  `;
+  return jsonResult({ id: rows[0]?.id, createdAt: String(rows[0]?.created_at ?? "") });
+}
+
+async function deleteMomentTool(userId: string, args: Record<string, unknown>) {
+  await requireAdmin(userId);
+  const id = asNumber(args.id);
+  if (!id) throw new Error("请提供 id");
+  const sql = await getSql();
+  await sql`delete from moments where id = ${id}`;
+  return jsonResult({ ok: true, id });
+}
+
+async function listLinksTool() {
+  const sql = await getSql();
+  const rows = await sql.query<{ id: number; name: string; url: string; description: string; group_name: string }>(
+    `select id, name, url, description, group_name from friend_links order by sort_order asc, id asc`,
+  );
+  return jsonResult({
+    links: rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      url: row.url,
+      description: row.description,
+      groupName: row.group_name,
+    })),
+  });
+}
+
+async function createLinkTool(userId: string, args: Record<string, unknown>) {
+  await requireAdmin(userId);
+  const name = asString(args.name)?.trim() ?? "";
+  const url = asString(args.url)?.trim() ?? "";
+  if (!name || !url) throw new Error("请提供 name 和 url");
+  if (!/^https?:\/\//i.test(url)) throw new Error("url 需以 http 开头");
+  const sql = await getSql();
+  const rows = await sql`
+    insert into friend_links (name, url, description, group_name)
+    values (${name}, ${url}, ${asString(args.description)?.trim() ?? ""}, ${asString(args.groupName)?.trim() || "阅读"})
+    returning id
+  `;
+  return jsonResult({ id: rows[0]?.id, name, url });
+}
+
+async function deleteLinkTool(userId: string, args: Record<string, unknown>) {
+  await requireAdmin(userId);
+  const id = asNumber(args.id);
+  if (!id) throw new Error("请提供 id");
+  const sql = await getSql();
+  await sql`delete from friend_links where id = ${id}`;
+  return jsonResult({ ok: true, id });
+}
+
+async function listPhotosTool() {
+  const sql = await getSql();
+  const rows = await sql.query<{ id: number; title: string; image: string; group_name: string; taken_at: string }>(
+    `select id, title, image, group_name, taken_at from photos order by taken_at desc`,
+  );
+  return jsonResult({
+    photos: rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      image: row.image,
+      groupName: row.group_name,
+      takenAt: String(row.taken_at),
+    })),
+  });
+}
+
+async function createPhotoTool(userId: string, args: Record<string, unknown>) {
+  await requireAdmin(userId);
+  const title = asString(args.title)?.trim() ?? "";
+  const image = asString(args.image)?.trim() ?? "";
+  if (!title || !image) throw new Error("请提供 title 和 image");
+  const sql = await getSql();
+  const rows = await sql`
+    insert into photos (title, description, image, group_name)
+    values (${title}, ${asString(args.description)?.trim() ?? ""}, ${image}, ${asString(args.groupName)?.trim() || "日常"})
+    returning id
+  `;
+  return jsonResult({ id: rows[0]?.id, title, image });
+}
+
+async function listPagesTool() {
+  return jsonResult({ pages: await readPages() });
+}
+
+async function setFrontPageTool(userId: string, args: Record<string, unknown>) {
+  await requireAdmin(userId);
+  const page = asString(args.page);
+  const visible = asBoolean(args.visible);
+  if (!page || !isFrontPage(page)) throw new Error("page 只能是 moments、photos、archive、links");
+  if (visible == null) throw new Error("请提供 visible");
+  const current = await readPages();
+  const next = { ...current, [page]: visible };
+  const sql = await getSql();
+  await sql`
+    insert into site_settings (key, value, updated_at)
+    values (${"front_pages"}, ${JSON.stringify(next)}, ${new Date().toISOString()})
+    on conflict (key) do update set value = excluded.value, updated_at = excluded.updated_at
+  `;
+  return jsonResult({ pages: next });
+}
+
+async function addTopicTool(userId: string, args: Record<string, unknown>) {
+  await requireAdmin(userId);
+  const name = normalizeTopicName(asString(args.name) ?? "");
+  if (!name) throw new Error("分类名不能为空");
+  const current = await loadTopics();
+  if (current.includes(name)) throw new Error("这个分类已经有了");
+  if (current.length >= MAX_TOPICS) throw new Error("分类太多了");
+  const next = [...current, name];
+  const sql = await getSql();
+  await sql`
+    insert into site_settings (key, value, updated_at)
+    values (${"topics"}, ${JSON.stringify(next)}, ${new Date().toISOString()})
+    on conflict (key) do update set value = excluded.value, updated_at = excluded.updated_at
+  `;
+  return jsonResult({ topics: next });
+}
+
+async function getRevisionTool(userId: string, args: Record<string, unknown>) {
+  const id = asNumber(args.id);
+  if (!id) throw new Error("请提供 id");
+  const sql = await getSql();
+  const rows = await sql.query<{
+    id: number;
+    post_id: number;
+    title: string;
+    excerpt: string;
+    body: string;
+    editor_name: string;
+    created_at: string;
+    slug: string;
+    user_id: string;
+  }>(
+    `select r.id, r.post_id, r.title, r.excerpt, r.body, r.editor_name, r.created_at, p.slug, p.user_id
+     from post_revisions r join posts p on p.id = r.post_id
+     where r.id = $1 limit 1`,
+    [id],
+  );
+  const row = rows[0];
+  if (!row) throw new Error("找不到这个版本");
+  const actor = await getActor(userId);
+  if (row.user_id !== userId && !actor.canEditAll) throw new Error("没有权限");
+  return jsonResult({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    excerpt: row.excerpt,
+    body: row.body,
+    editorName: row.editor_name,
+    createdAt: String(row.created_at),
   });
 }
 
@@ -377,6 +758,8 @@ export async function listPostResources(userId: string, origin: string) {
   return [
     { uri: "folio://site", name: "站点", mimeType: "application/json", description: "站点栏目与当前用户" },
     { uri: "folio://posts", name: "文章列表", mimeType: "application/json", description: "可管理的文章" },
+    { uri: "folio://comments", name: "最近评论", mimeType: "application/json", description: "最新评论" },
+    { uri: "folio://moments", name: "瞬间", mimeType: "application/json", description: "瞬间列表" },
     ...posts.slice(0, 50).map((post) => ({
       uri: `folio://posts/${post.slug}`,
       name: post.title,
@@ -393,6 +776,14 @@ export async function readResource(uri: string, ctx: { userId: string; origin: s
   }
   if (uri === "folio://posts") {
     const result = await listPosts(ctx.userId, { limit: 40 });
+    return { mimeType: "application/json", text: result.content[0]?.text ?? "{}" };
+  }
+  if (uri === "folio://comments") {
+    const result = await listCommentsTool({ limit: 30 });
+    return { mimeType: "application/json", text: result.content[0]?.text ?? "{}" };
+  }
+  if (uri === "folio://moments") {
+    const result = await listMomentsTool({ limit: 20 });
     return { mimeType: "application/json", text: result.content[0]?.text ?? "{}" };
   }
   const match = /^folio:\/\/posts\/(.+)$/.exec(uri);

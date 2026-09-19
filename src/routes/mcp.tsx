@@ -7,5 +7,5 @@ export const Route = createFileRoute("/mcp")({
     await requireWriterAccess("/console?section=agent");
     throw redirect({ to: "/console", search: { section: "agent" } });
   },
-  notFoundComponent: MissingPage,
+  notFoundComponent: () => <MissingPage />,
 });

@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getActor } from "@/lib/roles";
-import { TOPICS } from "@/lib/blog/types";
 import { listUserTokens, createUserToken, revokeUserToken } from "./tokens";
 import { listSyncPosts, publishMarkdown, pullMarkdown } from "./sync";
 
@@ -46,5 +45,3 @@ export const pullObsidianPost = createServerFn({ method: "POST" })
     if (!markdown) throw new Error("找不到这篇文章");
     return { markdown };
   });
-
-export const obsidianTopics = TOPICS;
