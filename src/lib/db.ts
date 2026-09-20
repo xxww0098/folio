@@ -137,11 +137,9 @@ async function createPgliteSql(): Promise<Sql> {
   // passes serialized on a global chain so concurrent callers never
   // double-apply.
   const migrate = async (): Promise<void> => {
-    const glob = import.meta.glob;
-    // Vite (and bun test) inline this. Raw Node has no glob — skip; Postgres
-    // deploys apply the same files via scripts/migrate.mjs.
-    if (typeof glob !== "function") return;
-    const migrations = glob("/migrations/*.sql", {
+    // Node's test runner has no Vite glob. Postgres deploys use scripts/migrate.mjs.
+    if (process.env.NODE_TEST_CONTEXT) return;
+    const migrations = import.meta.glob("/migrations/*.sql", {
       query: "?raw",
       import: "default",
       eager: true,
