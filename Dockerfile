@@ -26,7 +26,10 @@ WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --production
 
-FROM oven/bun:1 AS runner
+# srvx's Node adapter assigns `request.waitUntil`. Bun's Request is frozen, so
+# that write throws TypeError on every request (v0.1.7). Keep bun for install
+# and build; the process that serves HTTP must be real Node.
+FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=8080 \

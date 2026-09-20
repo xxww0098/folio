@@ -19,6 +19,8 @@
 
 不要直接跑 `vite`。锁文件是 `bun.lock`，不要再生成 `package-lock.json`。
 
+Docker：bun 只用于 install / build。runner 必须是 `node:22-bookworm-slim`。srvx 的 node 适配器会给 Request 写 `waitUntil`，Bun 的 Request 只读，每次请求 TypeError（v0.1.7 事故）。不要把 runner 改回 `oven/bun`。
+
 ## Dev environment tips
 
 - 预览必须听 `0.0.0.0:8080`。改启动命令先同步 `/workspace/startup.sh`。
@@ -116,5 +118,6 @@ bun run check:auth
 - 去掉 `PreviewHostBridge` 或 Grok 品牌条
 - 新建 `src/routes/auth/popup.tsx`
 - 换栈、换框架
+- 把 Docker runner 改成 oven/bun（srvx 必须跑在真 Node 上）
 - 在 JSX 里堆渐变 blob、lorem、占位灰块
 - 对外文案写「参考 / 对齐 / 模仿」其他产品

@@ -4,7 +4,7 @@ cd /app
 
 echo "[folio] applying migrations…"
 i=0
-until bun scripts/migrate.mjs; do
+until node scripts/migrate.mjs; do
   i=$((i + 1))
   if [ "$i" -ge 12 ]; then
     echo "[folio] migrate failed after ${i} attempts" >&2
@@ -15,16 +15,19 @@ until bun scripts/migrate.mjs; do
 done
 
 echo "[folio] initializing host…"
-bun scripts/ensure-init.mjs
+node scripts/ensure-init.mjs
 
 PORT="${PORT:-8080}"
 HOST="${HOST:-0.0.0.0}"
 echo "[folio] listening on ${HOST}:${PORT} (version ${VITE_FOLIO_VERSION:-unknown})"
 
+# Start srvx with real node. The package bin shebang is `#!/usr/bin/env node`;
+# on a Bun image that resolves to bun's node shim, which then uses srvx's
+# Node adapter and crashes on `request.waitUntil = …`.
 # srvx resolves --static relative to the --entry file unless --dir is set.
 # Passing a cwd-relative static path without --dir 404s every /assets/* file
 # and the UI renders as unstyled HTML (default blue links, no layout).
-exec ./node_modules/.bin/srvx serve --prod \
+exec node ./node_modules/srvx/bin/srvx.mjs serve --prod \
   --host "$HOST" \
   --port "$PORT" \
   --dir "$PWD" \
