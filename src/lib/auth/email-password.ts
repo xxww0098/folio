@@ -7,4 +7,4 @@
  *
  * Do NOT edit `server.ts` for this — that file is frozen pre-wired config.
  */
-export const emailAndPasswordEnabled = import.meta.env.VITE_FOLIO_EMAIL_PASSWORD !== "false";
+export const emailAndPasswordEnabled = import.meta.env?.VITE_FOLIO_EMAIL_PASSWORD !== "false";

@@ -110,8 +110,8 @@ docker compose exec -T folio node scripts/import-db.mjs < folio.json
 脚本会把 `.env` 里的 `FOLIO_VERSION` 写成最新 tag，再 `docker compose pull && up`。指定版本：
 
 ```sh
-FOLIO_VERSION=v0.1.8 docker compose pull folio
-FOLIO_VERSION=v0.1.8 docker compose up -d
+FOLIO_VERSION=v0.1.9 docker compose pull folio
+FOLIO_VERSION=v0.1.9 docker compose up -d
 ```
 
 控制台页会显示当前版本；GitHub 上有更新时会提示跑上面的脚本。
@@ -132,26 +132,26 @@ docker compose up -d
 ### 3. 发布新版本（维护者）
 
 ```sh
-git tag v0.1.8
-git push origin v0.1.8
+git tag v0.1.9
+git push origin v0.1.9
 ```
 
 推送 `v*` 标签后，GitHub Actions 会：构建 `amd64` / `arm64` 镜像 → 推送到 GHCR → 创建 GitHub Release。
 
 ## 本地开发
 
-需要 [Bun](https://bun.sh) 1.2+。
+需要 [Node.js](https://nodejs.org/) 22+。
 
 ```sh
-bun install
-VITE_AUTH_ENABLED=true VITE_FOLIO_EMAIL_PASSWORD=true bun run dev
+npm install
+VITE_AUTH_ENABLED=true VITE_FOLIO_EMAIL_PASSWORD=true npm run dev
 ```
 
 开发服默认 `0.0.0.0:8080`。不设 `DATABASE_URL` 时用内嵌 PGLite；设了则连 Postgres。
 
 ```sh
-bun run typecheck
-bun run test
+npm run typecheck
+npm test
 ```
 
 ## 环境变量

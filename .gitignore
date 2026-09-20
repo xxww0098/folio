@@ -21,3 +21,6 @@ coverage/
 AGENTS.md
 startup.sh
 public/__grok/
+
+bun.lock
+bun.lockb

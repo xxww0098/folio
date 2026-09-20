@@ -21,12 +21,9 @@ PORT="${PORT:-8080}"
 HOST="${HOST:-0.0.0.0}"
 echo "[folio] listening on ${HOST}:${PORT} (version ${VITE_FOLIO_VERSION:-unknown})"
 
-# Start srvx with real node. The package bin shebang is `#!/usr/bin/env node`;
-# on a Bun image that resolves to bun's node shim, which then uses srvx's
-# Node adapter and crashes on `request.waitUntil = …`.
-# srvx resolves --static relative to the --entry file unless --dir is set.
-# Passing a cwd-relative static path without --dir 404s every /assets/* file
-# and the UI renders as unstyled HTML (default blue links, no layout).
+# srvx's Node adapter assigns request.waitUntil. Invoke it with real node,
+# never bun's node shim (v0.1.7). --dir is required so --static is not
+# resolved relative to the --entry file (otherwise /assets/* 404s).
 exec node ./node_modules/srvx/bin/srvx.mjs serve --prod \
   --host "$HOST" \
   --port "$PORT" \

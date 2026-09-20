@@ -3,9 +3,9 @@
  * Fail loudly when the running dev server and the next build disagree about
  * `VITE_AUTH_ENABLED`.
  *
- * `bun run dev`, `bun run build` and `bun run preview` all get the flag from
+ * `npm run dev`, `npm run build` and `npm run preview` all get the flag from
  * `scripts/with-app-env.mjs`, so they agree by construction — but a dev server
- * started outside bun (`vite dev`) does not, and the result is sign-in
+ * started outside npm (`vite dev`) does not, and the result is sign-in
  * visible in the live preview and absent from the built output, or the reverse.
  *
  * The two sides compared:
@@ -18,7 +18,7 @@
  * compare against unless the app is made to emit one.
  *
  * `scripts/browser-smoke.mjs` runs the comparison on every smoke; run it
- * standalone against a live dev server with `bun run check:auth` (exit 0 agree,
+ * standalone against a live dev server with `npm run check:auth` (exit 0 agree,
  * 1 diverged, 2 could not observe). Callers comparing the flag should use
  * `compareAuthInvariant()` rather than re-deriving it.
  */
@@ -54,7 +54,7 @@ export function compareAuthInvariant({ devAuthEnabled, buildAuthEnabled }) {
     status: "diverged",
     message:
       `[auth-invariant] dev server has sign-in ${label(devAuthEnabled)} but the next ` +
-      `build has it ${label(buildAuthEnabled)}. Start the app with \`bun run dev\` — ` +
+      `build has it ${label(buildAuthEnabled)}. Start the app with \`npm run dev\` — ` +
       "invoking vite directly skips scripts/with-app-env.mjs, so the dev server and " +
       "the built output resolve .grok/app-env.json differently.",
   };
