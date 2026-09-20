@@ -1,16 +1,15 @@
 # syntax=docker/dockerfile:1
 
 # JS build is arch-independent. Run it on the host arch (BUILDPLATFORM) so
-# GitHub Actions does not qemu-emulate bun / vite for linux/arm64.
-FROM --platform=$BUILDPLATFORM oven/bun:1 AS deps
+# GitHub Actions does not qemu-emulate npm / vite for linux/arm64.
+FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS deps
 WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+COPY package.json package-lock.json ./
+RUN npm ci
 
-FROM --platform=$BUILDPLATFORM oven/bun:1 AS build
+FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/bun.lock ./bun.lock
 COPY . .
 ARG VITE_AUTH_ENABLED=true
 ARG VITE_FOLIO_EMAIL_PASSWORD=true
@@ -19,16 +18,15 @@ ENV VITE_AUTH_ENABLED=$VITE_AUTH_ENABLED \
     VITE_FOLIO_EMAIL_PASSWORD=$VITE_FOLIO_EMAIL_PASSWORD \
     VITE_FOLIO_VERSION=$VITE_FOLIO_VERSION \
     PATH="/app/node_modules/.bin:$PATH"
-RUN bun scripts/with-app-env.mjs vite build
+RUN node scripts/with-app-env.mjs vite build
 
-FROM oven/bun:1 AS prod-deps
+FROM node:22-bookworm-slim AS prod-deps
 WORKDIR /app
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
-# srvx's Node adapter assigns `request.waitUntil`. Bun's Request is frozen, so
-# that write throws TypeError on every request (v0.1.7). Keep bun for install
-# and build; the process that serves HTTP must be real Node.
+# srvx's Node adapter assigns `request.waitUntil`. Do not switch this image
+# to oven/bun: Bun's Request is frozen and every request throws TypeError (v0.1.7).
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
@@ -38,7 +36,7 @@ RUN apt-get update \
   && apt-get install -y --no-install-recommends curl ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=prod-deps /app/node_modules ./node_modules
-COPY --from=build /app/package.json /app/bun.lock ./
+COPY --from=build /app/package.json /app/package-lock.json ./
 COPY --from=build /app/.vercel ./.vercel
 COPY --from=build /app/scripts ./scripts
 COPY --from=build /app/migrations ./migrations

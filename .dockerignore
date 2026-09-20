@@ -21,7 +21,8 @@ AGENTS.md
 startup.sh
 .project_id
 .node_modules.lock
-package-lock.json
+bun.lock
+bun.lockb
 npm-debug.log*
 
 docker-compose.override.yml

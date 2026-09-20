@@ -8,18 +8,18 @@
 
 ## Setup commands
 
-- Install deps: `bun install`（工作区通常已装好，先读 `package.json`）
-- Start: `bun run dev`（唯一允许的开发启动；经 `scripts/with-app-env.mjs`）
-- Typecheck: `bun run typecheck`
-- Tests: `bun test` 或 `bun run test`
-- Lint: `bun run lint`
-- Auth invariant: `bun run check:auth`
-- Production build: `bun run build`，成功后再 `bun run preview:restart`
+- Install deps: `npm install`（工作区通常已装好，先读 `package.json`）
+- Start: `npm run dev`（唯一允许的开发启动；经 `scripts/with-app-env.mjs`）
+- Typecheck: `npm run typecheck`
+- Tests: `npm test`
+- Lint: `npm run lint`
+- Auth invariant: `npm run check:auth`
+- Production build: `npm run build`，成功后再 `npm run preview:restart`
 - Self-host upgrade: `./scripts/update-from-release.sh`
 
-不要直接跑 `vite`。锁文件是 `bun.lock`，不要再生成 `package-lock.json`。
+不要直接跑 `vite`。锁文件是 `package-lock.json`，不要生成 `bun.lock`。
 
-Docker：bun 只用于 install / build。runner 必须是 `node:22-bookworm-slim`。srvx 的 node 适配器会给 Request 写 `waitUntil`，Bun 的 Request 只读，每次请求 TypeError（v0.1.7 事故）。不要把 runner 改回 `oven/bun`。
+Docker 全流程用 Node（`node:22-bookworm-slim` + `npm ci`）。srvx 的 node 适配器会给 Request 写 `waitUntil`，Bun 的 Request 只读，每次请求 TypeError（v0.1.7 事故）。不要把任何阶段改成 `oven/bun`。
 
 ## Dev environment tips
 
@@ -85,21 +85,21 @@ public/obsidian-folio/   Obsidian 插件
 ## Testing instructions
 
 ```bash
-bun run typecheck
-bun run test
-bun run check:auth
+npm run typecheck
+npm test
+npm run check:auth
 ```
 
 - CI 工作流在 `.github/workflows/`。提交前 typecheck + 相关测试要绿。
 - 行为变了就补测试，靠近现有 `src/lib/**/*.test.ts` 和 `scripts/**/*.test.mjs`。
 - 不要为常量或已删除的逻辑写负向测试。
 - 对用户可见的改动：开发服保持 `0.0.0.0:8080`；`node scripts/browser-smoke.mjs`；看截图不要只看 JSON；交互用 `agent-browser`，不要手写 Playwright 脚本。
-- `bun run build` 通过后 `bun run preview:restart`，再对构建结果跑一次 smoke。
+- `npm run build` 通过后 `npm run preview:restart`，再对构建结果跑一次 smoke。
 
 ## PR instructions
 
 - 标题：`<scope>: <中文或英文简述>`，例如 `console: 文章表格支持筛选翻页`。
-- 提交前跑 `bun run typecheck` 和 `bun run test`。
+- 提交前跑 `npm run typecheck` 和 `npm test`。
 - 只包含这次需求。不要顺手改 README 里未要求的功能列表，除非产品事实已经变了。
 - 发版：GitHub Release `v*` tag → GHCR。不要把沙箱 `AGENTS.md` 写进产品说明。
 
@@ -118,6 +118,6 @@ bun run check:auth
 - 去掉 `PreviewHostBridge` 或 Grok 品牌条
 - 新建 `src/routes/auth/popup.tsx`
 - 换栈、换框架
-- 把 Docker runner 改成 oven/bun（srvx 必须跑在真 Node 上）
+- 把 Docker 任何阶段改成 oven/bun（install / build / 运行都必须是 Node + npm）
 - 在 JSX 里堆渐变 blob、lorem、占位灰块
 - 对外文案写「参考 / 对齐 / 模仿」其他产品
